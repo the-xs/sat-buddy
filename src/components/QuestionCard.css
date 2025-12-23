@@ -70,9 +70,9 @@
 }
 
 .option.selected {
-    background: rgba(var(--primary-hue), var(--primary-sat), var(--primary-light), 0.1);
+    background: hsla(var(--primary-hue), var(--primary-sat), var(--primary-light), 0.1);
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(var(--primary-hue), var(--primary-sat), var(--primary-light), 0.2);
+    box-shadow: 0 0 0 3px hsla(var(--primary-hue), var(--primary-sat), var(--primary-light), 0.2);
 }
 
 .option.correct {

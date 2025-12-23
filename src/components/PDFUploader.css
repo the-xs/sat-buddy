@@ -46,7 +46,7 @@
 
 .drop-zone.active {
     border-color: var(--color-primary);
-    background: rgba(var(--primary-hue), var(--primary-sat), var(--primary-light), 0.1);
+    background: hsla(var(--primary-hue), var(--primary-sat), var(--primary-light), 0.1);
     transform: scale(1.02);
 }
 

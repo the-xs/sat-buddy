@@ -3,6 +3,7 @@ import { BookOpen, Upload, PlayCircle, BarChart3, FileText, History, CheckCircle
 import PDFUploader from './components/PDFUploader';
 import MockTest from './components/MockTest';
 import TestResults from './components/TestResults';
+import ThemeSwitcher from './components/ThemeSwitcher';
 import { satTestAPI } from './services/api';
 import './App.css';
 
@@ -15,11 +16,21 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pastSessions, setPastSessions] = useState([]);
+  const [theme, setTheme] = useState(localStorage.getItem('sat-buddy-theme') || 'dark');
 
   useEffect(() => {
     loadSATTests();
     loadPastSessions();
   }, []);
+
+  useEffect(() => {
+    // Apply theme to body
+    document.body.className = '';
+    if (theme !== 'dark') {
+      document.body.classList.add(`theme-${theme}`);
+    }
+    localStorage.setItem('sat-buddy-theme', theme);
+  }, [theme]);
 
   const loadSATTests = async () => {
     setLoading(true);
@@ -269,11 +280,14 @@ function App() {
               <BookOpen size={32} />
               <span>SAT Buddy</span>
             </div>
-            {currentView !== 'home' && (
-              <button onClick={handleReturnHome} className="btn btn-secondary btn-sm">
-                Back to Home
-              </button>
-            )}
+            <div className="header-actions">
+              <ThemeSwitcher currentTheme={theme} onThemeChange={setTheme} />
+              {currentView !== 'home' && (
+                <button onClick={handleReturnHome} className="btn btn-secondary btn-sm">
+                  Back to Home
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>

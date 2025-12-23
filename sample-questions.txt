@@ -1,0 +1,91 @@
+# SAT Practice Questions - Math
+
+Question 1: If x + 5 = 12, what is the value of x?
+A) 5
+B) 7
+C) 12
+D) 17
+Answer: B
+
+Explanation: To solve for x, subtract 5 from both sides: x = 12 - 5 = 7
+
+Question 2: What is 15% of 200?
+A) 15
+B) 30
+C) 45
+D) 60
+Answer: B
+
+Explanation: 15% of 200 = 0.15 × 200 = 30
+
+Question 3: If a triangle has sides of length 3, 4, and 5, what type of triangle is it?
+A) Equilateral
+B) Isosceles
+C) Right
+D) Obtuse
+Answer: C
+
+Explanation: Since 3² + 4² = 9 + 16 = 25 = 5², this satisfies the Pythagorean theorem, making it a right triangle.
+
+Question 4: What is the slope of a line passing through points (2, 3) and (6, 11)?
+A) 1
+B) 2
+C) 3
+D) 4
+Answer: B
+
+Explanation: Slope = (y₂ - y₁)/(x₂ - x₁) = (11 - 3)/(6 - 2) = 8/4 = 2
+
+Question 5: If f(x) = 2x + 3, what is f(5)?
+A) 10
+B) 11
+C) 13
+D) 15
+Answer: C
+
+Explanation: f(5) = 2(5) + 3 = 10 + 3 = 13
+
+Question 6: What is the area of a circle with radius 4?
+A) 8π
+B) 12π
+C) 16π
+D) 20π
+Answer: C
+
+Explanation: Area = πr² = π(4)² = 16π
+
+Question 7: Solve for y: 3y - 7 = 14
+A) 5
+B) 6
+C) 7
+D) 8
+Answer: C
+
+Explanation: 3y = 14 + 7 = 21, so y = 21/3 = 7
+
+Question 8: What is the value of 2³ × 2²?
+A) 16
+B) 32
+C) 64
+D) 128
+Answer: B
+
+Explanation: 2³ × 2² = 2⁵ = 32
+
+Question 9: If a rectangle has length 8 and width 5, what is its perimeter?
+A) 13
+B) 26
+C) 40
+D) 52
+Answer: B
+
+Explanation: Perimeter = 2(length + width) = 2(8 + 5) = 2(13) = 26
+
+Question 10: What is the median of the set {3, 7, 2, 9, 5}?
+A) 3
+B) 5
+C) 7
+D) 9
+Answer: B
+
+Explanation: First sort the numbers: {2, 3, 5, 7, 9}. The median is the middle value: 5

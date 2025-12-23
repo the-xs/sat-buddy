@@ -1,0 +1,139 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// SAT TEST STRUCTURE
+// ============================================
+
+// Represents an uploaded SAT test PDF file
+model SATTest {
+  id            Int       @id @default(autoincrement())
+  name          String    // e.g., "SAT Practice Test #1"
+  description   String?   @db.Text
+  pdfFilename   String    @map("pdf_filename")  // Stored filename in file system
+  originalName  String    @map("original_name") // Original uploaded filename
+  uploadedAt    DateTime  @default(now()) @map("uploaded_at")
+  
+  modules       Module[]
+  testSessions  TestSession[]
+
+  @@map("sat_tests")
+}
+
+// Represents a module within a SAT test
+// SAT has: Reading/Writing Module 1, Reading/Writing Module 2, Math Module 1, Math Module 2
+model Module {
+  id            Int       @id @default(autoincrement())
+  testId        Int       @map("test_id")
+  section       String    // "ReadingWriting" or "Math"
+  moduleNumber  Int       @map("module_number") // 1 or 2
+  timeLimit     Int?      @map("time_limit") // Time limit in minutes (optional)
+  
+  test          SATTest   @relation(fields: [testId], references: [id], onDelete: Cascade)
+  questions     Question[]
+
+  @@unique([testId, section, moduleNumber])
+  @@index([testId])
+  @@map("modules")
+}
+
+// Represents a question within a module
+model Question {
+  id              Int       @id @default(autoincrement())
+  moduleId        Int       @map("module_id")
+  questionNumber  Int       @map("question_number") // Question number within the module
+  questionType    String    @map("question_type") // "MultipleChoice" or "FreeResponse"
+  questionText    String    @map("question_text") @db.Text
+  
+  // For questions with figures/diagrams
+  hasFigure       Boolean   @default(false) @map("has_figure")
+  figureUrl       String?   @map("figure_url") // Path to figure image in file system
+  figureCaption   String?   @map("figure_caption") @db.Text // Description of the figure
+  
+  // For multiple choice questions
+  optionA         String?   @map("option_a") @db.Text
+  optionB         String?   @map("option_b") @db.Text
+  optionC         String?   @map("option_c") @db.Text
+  optionD         String?   @map("option_d") @db.Text
+  
+  // Correct answer: "A", "B", "C", "D" for MC, or the actual answer for free response
+  correctAnswer   String    @map("correct_answer") @db.Text
+  
+  // Explanation for the answer
+  explanation     String?   @db.Text
+  
+  // Difficulty and topic tags
+  difficulty      String?   // "Easy", "Medium", "Hard"
+  topic           String?   // e.g., "Algebra", "Grammar", "Reading Comprehension"
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  module          Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  testResults     TestResult[]
+
+  @@index([moduleId])
+  @@index([questionType])
+  @@map("questions")
+}
+
+// ============================================
+// TEST SESSION & RESULTS
+// ============================================
+
+// Represents a user taking a test
+model TestSession {
+  id              Int       @id @default(autoincrement())
+  sessionId       String    @unique @map("session_id")
+  testId          Int       @map("test_id")
+  
+  // Which modules are included in this session
+  includeRWModule1  Boolean @default(true) @map("include_rw_module1")
+  includeRWModule2  Boolean @default(true) @map("include_rw_module2")
+  includeMathModule1 Boolean @default(true) @map("include_math_module1")
+  includeMathModule2 Boolean @default(true) @map("include_math_module2")
+  
+  // Scores
+  rwScore         Int?      @map("rw_score") // Reading/Writing section score
+  mathScore       Int?      @map("math_score") // Math section score
+  totalScore      Int?      @map("total_score") // Combined score
+  
+  // Timestamps
+  startedAt       DateTime  @default(now()) @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  
+  test            SATTest   @relation(fields: [testId], references: [id], onDelete: Cascade)
+  results         TestResult[]
+
+  @@index([testId])
+  @@map("test_sessions")
+}
+
+// Individual question result within a test session
+model TestResult {
+  id              Int       @id @default(autoincrement())
+  sessionId       String    @map("session_id")
+  questionId      Int       @map("question_id")
+  
+  userAnswer      String?   @map("user_answer") @db.Text // User's answer
+  isCorrect       Boolean   @map("is_correct")
+  timeSpent       Int?      @map("time_spent") // Time spent on this question in seconds
+  
+  answeredAt      DateTime  @default(now()) @map("answered_at")
+  
+  session         TestSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  question        Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([questionId])
+  @@map("test_results")
+}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Upload, PlayCircle, BarChart3, FileText } from 'lucide-react';
+import { BookOpen, Upload, PlayCircle, BarChart3, FileText, History, CheckCircle, XCircle } from 'lucide-react';
 import PDFUploader from './components/PDFUploader';
 import MockTest from './components/MockTest';
 import TestResults from './components/TestResults';
@@ -14,9 +14,11 @@ function App() {
   const [questionStats, setQuestionStats] = useState({ Math: 0, ReadingWriting: 0, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pastSessions, setPastSessions] = useState([]);
 
   useEffect(() => {
     loadSATTests();
+    loadPastSessions();
   }, []);
 
   const loadSATTests = async () => {
@@ -74,6 +76,33 @@ function App() {
   const handleSelectTest = (test) => {
     setSelectedTest(test);
     setCurrentView('test');
+  };
+
+  const handleViewPastResults = async (sessionId) => {
+    try {
+      setLoading(true);
+      const response = await satTestAPI.getSessionResults(sessionId);
+      if (response.success) {
+        setTestResults(response.data);
+        setCurrentView('results');
+      }
+    } catch (err) {
+      console.error('Error loading session results:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadPastSessions = async () => {
+    try {
+      const response = await satTestAPI.getCompletedSessions();
+      if (response.success) {
+        setPastSessions(response.data);
+      }
+    } catch (err) {
+      console.error('Error loading past sessions:', err);
+    }
   };
 
   const renderView = () => {
@@ -181,6 +210,48 @@ function App() {
                       <button className="btn btn-primary btn-sm">Take Test</button>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Past Results Section */}
+            {pastSessions.length > 0 && (
+              <div className="tests-section past-results-section">
+                <h2><History size={24} /> Past Results</h2>
+                <div className="past-results-grid">
+                  {pastSessions.map(session => {
+                    const percentage = session.totalQuestions > 0
+                      ? Math.round((session.totalScore / session.totalQuestions) * 100)
+                      : 0;
+                    return (
+                      <div
+                        key={session.sessionId}
+                        className="past-result-card glass-card"
+                        onClick={() => handleViewPastResults(session.sessionId)}
+                      >
+                        <div className="past-result-header">
+                          <h4>{session.testName}</h4>
+                          <span className={`score-badge ${percentage >= 70 ? 'good' : percentage >= 50 ? 'medium' : 'low'}`}>
+                            {percentage}%
+                          </span>
+                        </div>
+                        <div className="past-result-stats">
+                          <span className="stat">
+                            <CheckCircle size={16} className="icon-success" />
+                            {session.totalScore} correct
+                          </span>
+                          <span className="stat">
+                            <XCircle size={16} className="icon-error" />
+                            {session.totalQuestions - session.totalScore} wrong
+                          </span>
+                        </div>
+                        <p className="past-result-date">
+                          Completed {new Date(session.completedAt).toLocaleDateString()} at {new Date(session.completedAt).toLocaleTimeString()}
+                        </p>
+                        <button className="btn btn-outline btn-sm">Review</button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

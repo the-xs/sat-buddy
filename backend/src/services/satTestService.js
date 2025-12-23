@@ -354,5 +354,33 @@ export const satTestService = {
             correctCount: results.filter(r => r.isCorrect).length,
             results
         };
+    },
+
+    // Get all completed sessions for review
+    async getCompletedSessions() {
+        const sessions = await prisma.testSession.findMany({
+            where: {
+                completedAt: { not: null }
+            },
+            include: {
+                test: true,
+                _count: {
+                    select: { results: true }
+                }
+            },
+            orderBy: { completedAt: 'desc' }
+        });
+
+        return sessions.map(s => ({
+            sessionId: s.sessionId,
+            testId: s.testId,
+            testName: s.test.name,
+            rwScore: s.rwScore,
+            mathScore: s.mathScore,
+            totalScore: s.totalScore,
+            totalQuestions: s._count.results,
+            startedAt: s.startedAt,
+            completedAt: s.completedAt
+        }));
     }
 };

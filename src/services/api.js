@@ -85,7 +85,10 @@ export const satTestAPI = {
     submitSession: (sessionId) => api.post(`/tests/session/${sessionId}/submit`),
 
     // Get detailed results for review
-    getSessionResults: (sessionId) => api.get(`/tests/session/${sessionId}/results`)
+    getSessionResults: (sessionId) => api.get(`/tests/session/${sessionId}/results`),
+
+    // Get all completed sessions for review
+    getCompletedSessions: () => api.get('/tests/sessions')
 };
 
 // Upload API

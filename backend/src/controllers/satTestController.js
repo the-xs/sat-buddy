@@ -239,5 +239,19 @@ export const satTestController = {
             }
             next(error);
         }
+    },
+
+    // GET /api/tests/sessions - Get all completed sessions for review
+    async getCompletedSessions(req, res, next) {
+        try {
+            const sessions = await satTestService.getCompletedSessions();
+            res.json({
+                success: true,
+                data: sessions,
+                count: sessions.length
+            });
+        } catch (error) {
+            next(error);
+        }
     }
 };

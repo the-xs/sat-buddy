@@ -268,6 +268,7 @@ const MockTest = ({ test, onTestComplete }) => {
                 <div className="progress-fill" style={{ width: `${progress}%` }}></div>
             </div>
 
+
             <div className="question-container">
                 <QuestionCard
                     question={{
@@ -283,14 +284,23 @@ const MockTest = ({ test, onTestComplete }) => {
                     questionNumber={currentQuestion.questionNumber}
                     selectedAnswer={answers[currentQuestion.id]}
                     onAnswerSelect={(answer) => handleAnswerSelect(currentQuestion.id, answer)}
+                    figureUrl={currentQuestion.hasFigure ? `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/tests/figure/${currentQuestion.id}` : null}
                 />
+            </div>
 
-                {currentQuestion.hasFigure && currentQuestion.figureCaption && (
-                    <div className="figure-description glass-card">
-                        <strong>Figure Description:</strong>
-                        <p>{currentQuestion.figureCaption}</p>
-                    </div>
-                )}
+            <div className="question-navigator">
+                <div className="question-grid">
+                    {allQuestions.map((q, index) => (
+                        <button
+                            key={q.id}
+                            onClick={() => goToQuestion(index)}
+                            className={`question-number ${index === currentQuestionIndex ? 'active' : ''} ${answers[q.id] ? 'answered' : ''} ${q.moduleSection === 'Math' ? 'math' : 'rw'}`}
+                            title={`${q.moduleSection} M${q.moduleNumber} Q${q.questionNumber}`}
+                        >
+                            {index + 1}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <div className="test-navigation">

@@ -12,6 +12,9 @@ router.get('/random', satTestController.getRandomQuestions);
 // GET /api/stats - Get overall statistics
 router.get('/stats', satTestController.getOverallStats);
 
+// GET /api/tests/figure/:questionId - Get cropped figure image for a question
+router.get('/figure/:questionId', satTestController.getFigure);
+
 // GET /api/tests/:id - Get single test
 router.get('/:id', satTestController.getTestById);
 

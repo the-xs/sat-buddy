@@ -1,6 +1,6 @@
 import './QuestionCard.css';
 
-const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect, showCorrectAnswer = false }) => {
+const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect, showCorrectAnswer = false, figureUrl = null }) => {
     const options = ['A', 'B', 'C', 'D'];
 
     const getOptionClass = (option) => {
@@ -25,6 +25,19 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
             <div className="question-header">
                 <span className="question-badge">Question {questionNumber}</span>
             </div>
+
+            {figureUrl && (
+                <div className="question-figure-container">
+                    <img
+                        src={figureUrl}
+                        alt={question.figureCaption || 'Question figure'}
+                        className="question-figure"
+                        onError={(e) => {
+                            e.target.style.display = 'none';
+                        }}
+                    />
+                </div>
+            )}
 
             <div className="question-text">
                 <p>{question.questionText}</p>

@@ -1,6 +1,24 @@
 import { satTestService } from '../services/satTestService.js';
+import { pdfService } from '../services/pdfService.js';
 
 export const satTestController = {
+    // GET /api/tests/figure/:questionId - Get cropped figure for a question
+    async getFigure(req, res, next) {
+        try {
+            const { questionId } = req.params;
+            const result = await pdfService.getFigureImage(questionId);
+            res.sendFile(result.path);
+        } catch (error) {
+            if (error.message === 'Question not found' || error.message === 'Question does not have figure data') {
+                return res.status(404).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+            next(error);
+        }
+    },
+
     // GET /api/tests - Get all SAT tests
     async getAllTests(req, res, next) {
         try {

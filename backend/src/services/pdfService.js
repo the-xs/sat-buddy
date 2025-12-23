@@ -3,6 +3,8 @@ import path from 'path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import prisma from '../config/database.js';
+import { fromPath } from 'pdf2pic';
+import sharp from 'sharp';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -11,6 +13,7 @@ const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY);
 // Upload directories
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 const PDF_DIR = path.join(UPLOADS_DIR, 'pdfs');
+const FIGURES_DIR = path.join(UPLOADS_DIR, 'figures');
 
 export const pdfService = {
     // Parse PDF and store in database
@@ -247,6 +250,101 @@ Return ONLY valid JSON. No conversational text.`;
             };
         } catch (error) {
             try { await fs.unlink(filePath); } catch { }
+            throw error;
+        }
+    },
+
+    // Get cropped figure image for a question
+    async getFigureImage(questionId) {
+        try {
+            // Get question with its module and test info
+            const question = await prisma.question.findUnique({
+                where: { id: parseInt(questionId) },
+                include: {
+                    module: {
+                        include: {
+                            test: true
+                        }
+                    }
+                }
+            });
+
+            if (!question) {
+                throw new Error('Question not found');
+            }
+
+            if (!question.hasFigure || !question.figurePageNumber || !question.figureBoundingBox) {
+                throw new Error('Question does not have figure data');
+            }
+
+            // Check if cached figure exists
+            const cacheFilename = `figure-q${questionId}.png`;
+            const cachePath = path.join(FIGURES_DIR, cacheFilename);
+
+            try {
+                await fs.access(cachePath);
+                // Cache exists, return the cached file
+                return { path: cachePath, cached: true };
+            } catch {
+                // Cache doesn't exist, generate the figure
+            }
+
+            // Ensure figures directory exists
+            await fs.mkdir(FIGURES_DIR, { recursive: true });
+
+            // Get PDF path
+            const pdfPath = path.join(PDF_DIR, question.module.test.pdfFilename);
+
+            // Convert PDF page to image using pdf2pic
+            const convert = fromPath(pdfPath, {
+                density: 200,           // DPI for quality
+                saveFilename: `temp-q${questionId}`,
+                savePath: FIGURES_DIR,
+                format: 'png',
+                width: 1200,            // Output width
+                height: 1600            // Output height
+            });
+
+            // Convert the specific page (pdf2pic is 1-indexed)
+            const pageResult = await convert(question.figurePageNumber);
+            const tempImagePath = pageResult.path;
+
+            // Get image dimensions for cropping
+            const metadata = await sharp(tempImagePath).metadata();
+            const imgWidth = metadata.width;
+            const imgHeight = metadata.height;
+
+            // Parse bounding box (stored as JSON string: [ymin, xmin, ymax, xmax])
+            const boundingBox = JSON.parse(question.figureBoundingBox);
+            const [ymin, xmin, ymax, xmax] = boundingBox;
+
+            // Convert normalized coordinates (0-1000) to pixel coordinates
+            const top = Math.max(0, Math.floor((ymin / 1000) * imgHeight));
+            const left = Math.max(0, Math.floor((xmin / 1000) * imgWidth));
+            const width = Math.min(imgWidth - left, Math.ceil(((xmax - xmin) / 1000) * imgWidth));
+            const height = Math.min(imgHeight - top, Math.ceil(((ymax - ymin) / 1000) * imgHeight));
+
+            // Crop and save the figure
+            await sharp(tempImagePath)
+                .extract({
+                    left,
+                    top,
+                    width: Math.max(1, width),
+                    height: Math.max(1, height)
+                })
+                .toFile(cachePath);
+
+            // Clean up temp file
+            try {
+                await fs.unlink(tempImagePath);
+            } catch {
+                // Ignore cleanup errors
+            }
+
+            console.log(`✅ Generated figure for question ${questionId}: ${cacheFilename}`);
+            return { path: cachePath, cached: false };
+        } catch (error) {
+            console.error('Error generating figure:', error);
             throw error;
         }
     }

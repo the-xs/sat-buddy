@@ -19,6 +19,19 @@
     letter-spacing: 0.5px;
 }
 
+.question-figure-container {
+    margin: var(--spacing-md) 0;
+    text-align: center;
+}
+
+.question-figure-container .question-figure {
+    max-width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
 .question-text {
     margin-bottom: var(--spacing-md);
 }

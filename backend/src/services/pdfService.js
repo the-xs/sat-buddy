@@ -46,12 +46,18 @@ export const pdfService = {
             const extractedModules = [];
             let testName = originalName.replace('.pdf', '').replace(/[_-]/g, ' ');
 
-            // Extract each module sequentially to stay within output token limits
+            // Extract each module sequentially
             for (const config of moduleConfigs) {
                 console.log(`🔍 Extracting ${config.section} Module ${config.moduleNumber}...`);
                 const result = await this.extractModuleWithGemini(uploadResult.file, config);
 
                 if (result.testName && !testName) testName = result.testName;
+
+                // Log figure detections
+                const figureCount = result.questions.filter(q => q.hasFigure).length;
+                if (figureCount > 0) {
+                    console.log(`   📊 Detected ${figureCount} questions with figures`);
+                }
 
                 extractedModules.push({
                     section: config.section,
@@ -93,10 +99,14 @@ Extract EVERY question for this specific module.
 
 1. **Question Number**: The number of the question within this module.
 2. **Question Type**: "MultipleChoice" (A, B, C, D) or "FreeResponse" (usually Math).
-3. **Question Text**: Complete text. If there is a diagram, chart, or geometry figure, DESCRIBE it in detail within the text.
+3. **Question Text**: Complete text.
 4. **Options**: For MultipleChoice, provide A, B, C, D. For FreeResponse, list these as null.
 5. **Correct Answer**: The letter (A, B, C, or D) or the numeric value for FreeResponse.
-6. **Explanation**: If provided in the text, extract it.
+6. **Figure Handling**:
+   - **hasFigure**: true if there is a diagram, chart, graph, or geometric figure.
+   - **figureDescription**: A detailed description of the figure that would allow someone to recreate it.
+   - **pageNumber**: The page number in the PDF (1-indexed) where this figure is located.
+   - **boundingBox**: The precise [ymin, xmin, ymax, xmax] coordinates of the figure as normalized values (0-1000).
 
 **OUTPUT FORMAT - Return valid JSON:**
 {
@@ -107,13 +117,15 @@ Extract EVERY question for this specific module.
       "questionType": "MultipleChoice" or "FreeResponse",
       "questionText": "full question text",
       "hasFigure": true or false,
-      "figureDescription": "detailed description of any figure/chart/graph" or null,
+      "figureDescription": "detailed description" or null,
+      "pageNumber": integer or null,
+      "boundingBox": [ymin, xmin, ymax, xmax] or null,
       "optionA": "option A text" or null,
       "optionB": "option B text" or null,
       "optionC": "option C text" or null,
       "optionD": "option D text" or null,
-      "correctAnswer": "A/B/C/D" or "the actual answer for free response",
-      "explanation": "explanation text" or ""
+      "correctAnswer": "A/B/C/D" or "answer",
+      "explanation": "text"
     }
   ]
 }
@@ -130,7 +142,17 @@ Return ONLY valid JSON. No conversational text.`;
                 { text: prompt }
             ]);
 
+            if (!result.response) {
+                console.error(`   ❌ No response from Gemini for ${config.promptSuffix}`);
+                return { questions: [] };
+            }
+
             const responseText = result.response.text();
+            if (!responseText) {
+                console.error(`   ❌ Empty response text from Gemini for ${config.promptSuffix}`);
+                return { questions: [] };
+            }
+
             let jsonText = responseText.trim();
             if (jsonText.startsWith('```json')) {
                 jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?$/g, '');
@@ -164,6 +186,8 @@ Return ONLY valid JSON. No conversational text.`;
                                 questionType: q.questionType,
                                 questionText: q.questionText,
                                 hasFigure: q.hasFigure || false,
+                                figurePageNumber: q.pageNumber || null,
+                                figureBoundingBox: q.boundingBox ? JSON.stringify(q.boundingBox) : null,
                                 figureCaption: q.figureDescription || null,
                                 optionA: q.optionA || null,
                                 optionB: q.optionB || null,

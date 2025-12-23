@@ -1,10 +1,10 @@
 .question-card {
-    padding: var(--spacing-2xl);
+    padding: var(--spacing-lg);
     animation: fadeIn var(--transition-base) ease-out;
 }
 
 .question-header {
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-sm);
 }
 
 .question-badge {
@@ -20,12 +20,12 @@
 }
 
 .question-text {
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: var(--spacing-md);
 }
 
 .question-text p {
-    font-size: 1.125rem;
-    line-height: 1.8;
+    font-size: 1rem;
+    line-height: 1.6;
     color: var(--color-text);
     margin: 0;
 }
@@ -39,8 +39,8 @@
 .option {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
-    padding: var(--spacing-lg);
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
     background: var(--color-surface);
     border: 2px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -86,12 +86,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     background: var(--color-bg-secondary);
     border-radius: var(--radius-sm);
     font-weight: 700;
-    font-size: 1.125rem;
+    font-size: 0.9rem;
     color: var(--color-text);
     flex-shrink: 0;
     transition: all var(--transition-base);
@@ -114,9 +114,9 @@
 
 .option-text {
     flex: 1;
-    font-size: 1rem;
+    font-size: 0.9rem;
     color: var(--color-text-secondary);
-    line-height: 1.6;
+    line-height: 1.4;
 }
 
 .option.selected .option-text,

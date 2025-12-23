@@ -55,9 +55,10 @@ model Question {
   questionText    String    @map("question_text") @db.Text
   
   // For questions with figures/diagrams
-  hasFigure       Boolean   @default(false) @map("has_figure")
-  figureUrl       String?   @map("figure_url") // Path to figure image in file system
-  figureCaption   String?   @map("figure_caption") @db.Text // Description of the figure
+  hasFigure         Boolean   @default(false) @map("has_figure")
+  figurePageNumber  Int?      @map("figure_page_number") // Page number in PDF (1-indexed)
+  figureBoundingBox String?   @map("figure_bounding_box") // JSON: [ymin, xmin, ymax, xmax] normalized 0-1000
+  figureCaption     String?   @map("figure_caption") @db.Text // AI-generated description of the figure
   
   // For multiple choice questions
   optionA         String?   @map("option_a") @db.Text

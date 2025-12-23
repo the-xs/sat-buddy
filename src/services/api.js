@@ -51,6 +51,24 @@ export const questionAPI = {
     getStats: () => api.get('/questions/stats')
 };
 
+// SAT Test API (new structure)
+export const satTestAPI = {
+    // Get all SAT tests
+    getAll: () => api.get('/tests'),
+
+    // Get single SAT test with modules
+    getById: (id) => api.get(`/tests/${id}`),
+
+    // Get questions for a specific module
+    getModuleQuestions: (testId, moduleId) => api.get(`/tests/${testId}/modules/${moduleId}/questions`),
+
+    // Get test statistics
+    getStats: (testId) => api.get(`/tests/${testId}/stats`),
+
+    // Delete a test
+    delete: (testId) => api.delete(`/tests/${testId}`)
+};
+
 // Upload API
 export const uploadAPI = {
     // Upload PDF file

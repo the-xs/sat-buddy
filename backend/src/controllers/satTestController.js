@@ -129,5 +129,115 @@ export const satTestController = {
         } catch (error) {
             next(error);
         }
+    },
+
+    // ============================================
+    // TEST SESSION ENDPOINTS
+    // ============================================
+
+    // POST /api/tests/session - Create a new test session
+    async createSession(req, res, next) {
+        try {
+            const { testId } = req.body;
+            if (!testId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'testId is required'
+                });
+            }
+            const session = await satTestService.createSession(testId);
+            res.status(201).json({
+                success: true,
+                data: session
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    // GET /api/tests/session/:sessionId - Get a session
+    async getSession(req, res, next) {
+        try {
+            const session = await satTestService.getSession(req.params.sessionId);
+            if (!session) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Session not found'
+                });
+            }
+            res.json({
+                success: true,
+                data: session
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    // POST /api/tests/session/:sessionId/answer - Record an answer
+    async recordAnswer(req, res, next) {
+        try {
+            const { sessionId } = req.params;
+            const { questionId, answer } = req.body;
+
+            if (!questionId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'questionId is required'
+                });
+            }
+
+            const result = await satTestService.recordAnswer(sessionId, questionId, answer);
+            res.json({
+                success: true,
+                data: result
+            });
+        } catch (error) {
+            if (error.message === 'Question not found') {
+                return res.status(404).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+            next(error);
+        }
+    },
+
+    // POST /api/tests/session/:sessionId/submit - Submit a session
+    async submitSession(req, res, next) {
+        try {
+            const session = await satTestService.submitSession(req.params.sessionId);
+            res.json({
+                success: true,
+                data: session
+            });
+        } catch (error) {
+            if (error.message === 'Session not found') {
+                return res.status(404).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+            next(error);
+        }
+    },
+
+    // GET /api/tests/session/:sessionId/results - Get detailed results
+    async getSessionResults(req, res, next) {
+        try {
+            const results = await satTestService.getSessionResults(req.params.sessionId);
+            res.json({
+                success: true,
+                data: results
+            });
+        } catch (error) {
+            if (error.message === 'Session not found') {
+                return res.status(404).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+            next(error);
+        }
     }
 };

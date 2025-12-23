@@ -83,7 +83,7 @@ function App() {
       case 'test':
         return <MockTest test={selectedTest} onTestComplete={handleTestComplete} />;
       case 'results':
-        return <TestResults results={testResults} onReturnHome={handleReturnHome} />;
+        return <TestResults sessionData={testResults} onReturnHome={handleReturnHome} />;
       default:
         return (
           <div className="home-view">

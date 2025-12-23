@@ -66,7 +66,26 @@ export const satTestAPI = {
     getStats: (testId) => api.get(`/tests/${testId}/stats`),
 
     // Delete a test
-    delete: (testId) => api.delete(`/tests/${testId}`)
+    delete: (testId) => api.delete(`/tests/${testId}`),
+
+    // ============================================
+    // SESSION MANAGEMENT
+    // ============================================
+
+    // Create a new test session
+    createSession: (testId) => api.post('/tests/session', { testId }),
+
+    // Get a session
+    getSession: (sessionId) => api.get(`/tests/session/${sessionId}`),
+
+    // Record an answer
+    recordAnswer: (sessionId, questionId, answer) => api.post(`/tests/session/${sessionId}/answer`, { questionId, answer }),
+
+    // Submit a session
+    submitSession: (sessionId) => api.post(`/tests/session/${sessionId}/submit`),
+
+    // Get detailed results for review
+    getSessionResults: (sessionId) => api.get(`/tests/session/${sessionId}/results`)
 };
 
 // Upload API

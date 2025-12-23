@@ -27,4 +27,23 @@ router.get('/:id/module/:section/:moduleNumber', satTestController.getModuleQues
 // DELETE /api/tests/:id - Delete a test
 router.delete('/:id', satTestController.deleteTest);
 
+// ============================================
+// TEST SESSION ROUTES
+// ============================================
+
+// POST /api/tests/session - Create a new test session
+router.post('/session', satTestController.createSession);
+
+// GET /api/tests/session/:sessionId - Get a session
+router.get('/session/:sessionId', satTestController.getSession);
+
+// POST /api/tests/session/:sessionId/answer - Record an answer
+router.post('/session/:sessionId/answer', satTestController.recordAnswer);
+
+// POST /api/tests/session/:sessionId/submit - Submit a session
+router.post('/session/:sessionId/submit', satTestController.submitSession);
+
+// GET /api/tests/session/:sessionId/results - Get detailed results for review
+router.get('/session/:sessionId/results', satTestController.getSessionResults);
+
 export default router;

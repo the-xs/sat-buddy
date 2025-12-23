@@ -13,6 +13,8 @@ const MockTest = ({ test, onTestComplete }) => {
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [answers, setAnswers] = useState({});
     const [testStarted, setTestStarted] = useState(false);
+    const [sessionId, setSessionId] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         if (test?.id) {
@@ -64,17 +66,43 @@ const MockTest = ({ test, onTestComplete }) => {
         }
     };
 
-    const startTest = () => {
-        setTestStarted(true);
-        setCurrentQuestionIndex(0);
-        setAnswers({});
+    const startTest = async () => {
+        try {
+            setLoading(true);
+            // Create session via API
+            const response = await satTestAPI.createSession(test.id);
+            if (response.success) {
+                setSessionId(response.data.sessionId);
+                setTestStarted(true);
+                setCurrentQuestionIndex(0);
+                setAnswers({});
+            } else {
+                setError('Failed to create test session');
+            }
+        } catch (err) {
+            console.error('Error creating session:', err);
+            setError(err.message || 'Failed to create test session');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleAnswerSelect = (questionId, answer) => {
+    const handleAnswerSelect = async (questionId, answer) => {
+        // Update local state immediately for responsiveness
         setAnswers(prev => ({
             ...prev,
             [questionId]: answer
         }));
+
+        // Record answer in backend (fire and forget for better UX)
+        if (sessionId) {
+            try {
+                await satTestAPI.recordAnswer(sessionId, questionId, answer);
+            } catch (err) {
+                console.error('Error recording answer:', err);
+                // Don't block the user, they can still navigate
+            }
+        }
     };
 
     const goToQuestion = (index) => {
@@ -93,44 +121,30 @@ const MockTest = ({ test, onTestComplete }) => {
         }
     };
 
-    const submitTest = () => {
-        // Calculate results
-        const results = allQuestions.map(question => {
-            const userAnswer = answers[question.id] || null;
-            const isCorrect = userAnswer && userAnswer.toUpperCase() === question.correctAnswer?.toUpperCase();
+    const submitTest = async () => {
+        if (!sessionId) {
+            console.error('No session ID');
+            return;
+        }
 
-            return {
-                questionId: question.id,
-                questionNumber: question.questionNumber,
-                moduleSection: question.moduleSection,
-                moduleNumber: question.moduleNumber,
-                questionText: question.questionText,
-                questionType: question.questionType,
-                options: {
-                    A: question.optionA,
-                    B: question.optionB,
-                    C: question.optionC,
-                    D: question.optionD
-                },
-                userAnswer,
-                correctAnswer: question.correctAnswer,
-                explanation: question.explanation,
-                isCorrect,
-                hasFigure: question.hasFigure,
-                figureCaption: question.figureCaption
-            };
-        });
+        try {
+            setSubmitting(true);
 
-        // Pass results to parent
-        if (onTestComplete) {
-            onTestComplete({
-                testId: test.id,
-                testName: testData?.name,
-                results,
-                totalQuestions: allQuestions.length,
-                correctCount: results.filter(r => r.isCorrect).length,
-                timestamp: new Date().toISOString()
-            });
+            // Submit session and get results from API
+            await satTestAPI.submitSession(sessionId);
+            const resultsResponse = await satTestAPI.getSessionResults(sessionId);
+
+            if (resultsResponse.success && onTestComplete) {
+                onTestComplete({
+                    sessionId,
+                    ...resultsResponse.data
+                });
+            }
+        } catch (err) {
+            console.error('Error submitting test:', err);
+            setError(err.message || 'Failed to submit test');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -317,9 +331,19 @@ const MockTest = ({ test, onTestComplete }) => {
                     <button
                         onClick={submitTest}
                         className="btn btn-success btn-lg"
+                        disabled={submitting}
                     >
-                        <CheckCircle size={20} />
-                        Submit Test
+                        {submitting ? (
+                            <>
+                                <Loader2 size={20} className="spinner" />
+                                Submitting...
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle size={20} />
+                                Submit Test
+                            </>
+                        )}
                     </button>
                 ) : (
                     <button

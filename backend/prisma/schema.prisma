@@ -134,6 +134,7 @@ model TestResult {
   session         TestSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
   question        Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
+  @@unique([sessionId, questionId])
   @@index([sessionId])
   @@index([questionId])
   @@map("test_results")

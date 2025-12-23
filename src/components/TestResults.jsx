@@ -3,11 +3,12 @@ import { CheckCircle, XCircle, Award, TrendingUp } from 'lucide-react';
 import QuestionCard from './QuestionCard';
 import './TestResults.css';
 
-const TestResults = ({ results, onReturnHome }) => {
+const TestResults = ({ sessionData, onReturnHome }) => {
     const [expandedQuestion, setExpandedQuestion] = useState(null);
 
-    const correctCount = results.filter(r => r.isCorrect).length;
-    const totalCount = results.length;
+    const results = sessionData?.results || [];
+    const correctCount = sessionData?.correctCount || results.filter(r => r.isCorrect).length;
+    const totalCount = sessionData?.totalQuestions || results.length;
     const percentage = Math.round((correctCount / totalCount) * 100);
 
     const getGrade = () => {
@@ -58,7 +59,7 @@ const TestResults = ({ results, onReturnHome }) => {
                         <div key={index} className="result-item glass-card">
                             <div className="result-header">
                                 <div className="result-info">
-                                    <span className="question-number">Question {index + 1}</span>
+                                    <span className="question-number">Q{result.questionNumber} ({result.moduleSection === 'ReadingWriting' ? 'R&W' : 'Math'} M{result.moduleNumber})</span>
                                     {result.isCorrect ? (
                                         <div className="result-badge correct">
                                             <CheckCircle size={20} />
@@ -74,7 +75,7 @@ const TestResults = ({ results, onReturnHome }) => {
                             </div>
 
                             <div className="result-question">
-                                <p>{result.question}</p>
+                                <p>{result.questionText}</p>
                             </div>
 
                             <div className="result-answers">
@@ -106,7 +107,7 @@ const TestResults = ({ results, onReturnHome }) => {
                                     <h4>Detailed Explanation</h4>
 
                                     <div className="options-review">
-                                        {['A', 'B', 'C', 'D'].map((option, optIndex) => (
+                                        {['A', 'B', 'C', 'D'].map((option) => (
                                             <div
                                                 key={option}
                                                 className={`option-review ${option === result.correctAnswer ? 'correct' : ''
@@ -114,7 +115,7 @@ const TestResults = ({ results, onReturnHome }) => {
                                                     }`}
                                             >
                                                 <span className="option-letter">{option}</span>
-                                                <span className="option-text">{result.options[optIndex]}</span>
+                                                <span className="option-text">{result.options?.[option] || result.options?.[['A', 'B', 'C', 'D'].indexOf(option)]}</span>
                                                 {option === result.correctAnswer && (
                                                     <CheckCircle size={20} className="check-icon" />
                                                 )}

@@ -1,8 +1,15 @@
-import { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle, Clock, BookOpen, Calculator, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { ArrowLeft, ArrowRight, CheckCircle, Clock, BookOpen, Calculator, Loader2, Coffee } from 'lucide-react';
 import { satTestAPI } from '../services/api';
 import QuestionCard from './QuestionCard';
 import './MockTest.css';
+
+// Timer constants (in seconds)
+const MODULE_TIMES = {
+    ReadingWriting: 32 * 60, // 32 minutes
+    Math: 35 * 60           // 35 minutes
+};
+const BREAK_TIME = 10 * 60; // 10 minutes
 
 const MockTest = ({ test, onTestComplete }) => {
     const [loading, setLoading] = useState(true);
@@ -15,6 +22,12 @@ const MockTest = ({ test, onTestComplete }) => {
     const [testStarted, setTestStarted] = useState(false);
     const [sessionId, setSessionId] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+
+    // Timer state
+    const [timeRemaining, setTimeRemaining] = useState(0);
+    const [isOnBreak, setIsOnBreak] = useState(false);
+    const [modules, setModules] = useState([]); // Sorted modules for navigation
+    const timerRef = useRef(null);
 
     useEffect(() => {
         if (test?.id) {
@@ -55,6 +68,8 @@ const MockTest = ({ test, onTestComplete }) => {
                 });
 
                 setAllQuestions(questions);
+                setModules(sortedModules); // Store for module navigation
+                setCurrentModuleIndex(0);
             } else {
                 setError('Failed to load test data');
             }
@@ -75,7 +90,14 @@ const MockTest = ({ test, onTestComplete }) => {
                 setSessionId(response.data.sessionId);
                 setTestStarted(true);
                 setCurrentQuestionIndex(0);
+                setCurrentModuleIndex(0);
                 setAnswers({});
+                setIsOnBreak(false);
+                // Initialize timer for first module
+                if (modules.length > 0) {
+                    const firstModuleSection = modules[0].section;
+                    setTimeRemaining(MODULE_TIMES[firstModuleSection]);
+                }
             } else {
                 setError('Failed to create test session');
             }
@@ -146,6 +168,111 @@ const MockTest = ({ test, onTestComplete }) => {
         } finally {
             setSubmitting(false);
         }
+    };
+
+    // Get the first question index for a given module index
+    const getModuleStartIndex = useCallback((moduleIdx) => {
+        if (!modules[moduleIdx]) return 0;
+        const targetModule = modules[moduleIdx];
+        for (let i = 0; i < allQuestions.length; i++) {
+            if (allQuestions[i].moduleSection === targetModule.section &&
+                allQuestions[i].moduleNumber === targetModule.moduleNumber) {
+                return i;
+            }
+        }
+        return 0;
+    }, [modules, allQuestions]);
+
+    // Advance to next module or trigger break/submit
+    const advanceModule = useCallback(() => {
+        const nextModuleIdx = currentModuleIndex + 1;
+
+        if (nextModuleIdx >= modules.length) {
+            // All modules complete - submit test
+            submitTest();
+            return;
+        }
+
+        const currentSection = modules[currentModuleIndex]?.section;
+        const nextSection = modules[nextModuleIdx]?.section;
+
+        // Check if transitioning from R/W to Math (break required)
+        if (currentSection === 'ReadingWriting' && nextSection === 'Math') {
+            setIsOnBreak(true);
+            setTimeRemaining(BREAK_TIME);
+        } else {
+            // Same section, move to next module immediately
+            setCurrentModuleIndex(nextModuleIdx);
+            setCurrentQuestionIndex(getModuleStartIndex(nextModuleIdx));
+            setTimeRemaining(MODULE_TIMES[nextSection]);
+        }
+    }, [currentModuleIndex, modules, getModuleStartIndex, submitTest]);
+
+    // Resume from break
+    const resumeFromBreak = useCallback(() => {
+        const nextModuleIdx = currentModuleIndex + 1;
+        if (nextModuleIdx < modules.length) {
+            setIsOnBreak(false);
+            setCurrentModuleIndex(nextModuleIdx);
+            setCurrentQuestionIndex(getModuleStartIndex(nextModuleIdx));
+            setTimeRemaining(MODULE_TIMES[modules[nextModuleIdx].section]);
+        }
+    }, [currentModuleIndex, modules, getModuleStartIndex]);
+
+    // Timer countdown effect
+    useEffect(() => {
+        if (!testStarted || loading || submitting) {
+            return;
+        }
+
+        timerRef.current = setInterval(() => {
+            setTimeRemaining(prev => {
+                if (prev <= 1) {
+                    // Time's up for current phase
+                    if (isOnBreak) {
+                        // Break ended, move to next module
+                        setTimeout(() => resumeFromBreak(), 0);
+                    } else {
+                        // Module time ended, advance
+                        setTimeout(() => advanceModule(), 0);
+                    }
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => {
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+            }
+        };
+    }, [testStarted, loading, submitting, isOnBreak, advanceModule, resumeFromBreak]);
+
+    // Track module changes and reset timer when module changes
+    useEffect(() => {
+        if (!testStarted || isOnBreak || allQuestions.length === 0) return;
+
+        const currentQ = allQuestions[currentQuestionIndex];
+        if (!currentQ) return;
+
+        // Find the module index for the current question
+        const currentQModuleIdx = modules.findIndex(
+            m => m.section === currentQ.moduleSection && m.moduleNumber === currentQ.moduleNumber
+        );
+
+        // If we've moved to a different module, update module index and reset timer
+        if (currentQModuleIdx !== -1 && currentQModuleIdx !== currentModuleIndex) {
+            setCurrentModuleIndex(currentQModuleIdx);
+            setTimeRemaining(MODULE_TIMES[modules[currentQModuleIdx].section]);
+        }
+    }, [currentQuestionIndex, allQuestions, modules, testStarted, isOnBreak, currentModuleIndex]);
+
+    // Format time as MM:SS
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
     const getAnsweredCount = () => {
@@ -259,6 +386,31 @@ const MockTest = ({ test, onTestComplete }) => {
     const currentModule = getCurrentModule();
     const moduleInfo = getModuleQuestionInfo();
 
+    // Break screen
+    if (isOnBreak) {
+        return (
+            <div className="test-break">
+                <div className="break-content glass-card">
+                    <div className="break-header">
+                        <Coffee size={64} />
+                        <h2>Break Time</h2>
+                        <p>Take a 10-minute break before starting the Math section.</p>
+                    </div>
+                    <div className="break-timer">
+                        <Clock size={32} />
+                        <span className="break-time">{formatTime(timeRemaining)}</span>
+                    </div>
+                    <div className="break-footer">
+                        <p>The Math section will begin automatically when the timer ends.</p>
+                        <button onClick={resumeFromBreak} className="btn btn-primary btn-lg">
+                            Skip Break & Start Math
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="mock-test">
             <div className="test-header">
@@ -271,6 +423,13 @@ const MockTest = ({ test, onTestComplete }) => {
                     <p>Question {moduleInfo.indexInModule} of {moduleInfo.totalInModule} (Overall: {currentQuestionIndex + 1}/{allQuestions.length})</p>
                 </div>
                 <div className="test-stats">
+                    <div className={`stat timer ${timeRemaining < 300 ? 'warning' : ''}`}>
+                        <span className="stat-label">Time</span>
+                        <span className="stat-value">
+                            <Clock size={18} />
+                            {formatTime(timeRemaining)}
+                        </span>
+                    </div>
                     <div className="stat">
                         <span className="stat-label">Answered</span>
                         <span className="stat-value">{getAnsweredCount()}/{allQuestions.length}</span>
@@ -304,16 +463,21 @@ const MockTest = ({ test, onTestComplete }) => {
 
             <div className="question-navigator">
                 <div className="question-grid">
-                    {allQuestions.map((q, index) => (
-                        <button
-                            key={q.id}
-                            onClick={() => goToQuestion(index)}
-                            className={`question-number ${index === currentQuestionIndex ? 'active' : ''} ${answers[q.id] ? 'answered' : ''} ${q.moduleSection === 'Math' ? 'math' : 'rw'}`}
-                            title={`${q.moduleSection} M${q.moduleNumber} Q${q.questionNumber}`}
-                        >
-                            {index + 1}
-                        </button>
-                    ))}
+                    {allQuestions.map((q, index) => {
+                        const isInCurrentModule = q.moduleSection === currentModule?.section &&
+                            q.moduleNumber === currentModule?.number;
+                        return (
+                            <button
+                                key={q.id}
+                                onClick={() => isInCurrentModule && goToQuestion(index)}
+                                className={`question-number ${index === currentQuestionIndex ? 'active' : ''} ${answers[q.id] ? 'answered' : ''} ${q.moduleSection === 'Math' ? 'math' : 'rw'} ${!isInCurrentModule ? 'disabled' : ''}`}
+                                title={`${q.moduleSection} M${q.moduleNumber} Q${q.questionNumber}`}
+                                disabled={!isInCurrentModule}
+                            >
+                                {index + 1}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 

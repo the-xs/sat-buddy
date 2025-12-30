@@ -12,7 +12,7 @@ const Sidebar = ({ activeView, onViewChange }) => {
     return (
         <aside className="sidebar">
             <div className="sidebar-header">
-                <BookOpen size={28} />
+                <img src="/logo.png" alt="SAT Buddy Logo" className="sidebar-logo" />
                 <span className="sidebar-title">SAT Buddy</span>
             </div>
             <nav className="sidebar-nav">

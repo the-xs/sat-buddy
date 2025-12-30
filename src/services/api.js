@@ -137,10 +137,16 @@ export const practiceAPI = {
     generateQuestion: (category = 'random') => api.post('/practice/generate', { category }),
 
     // Check user's answer
-    checkAnswer: (question, userAnswer) => api.post('/practice/check', { question, userAnswer }),
+    checkAnswer: (questionId, question, userAnswer) => api.post('/practice/check', { questionId, question, userAnswer }),
 
     // Get detailed explanation
-    explainAnswer: (question, userAnswer) => api.post('/practice/explain', { question, userAnswer })
+    explainAnswer: (questionId, question, userAnswer) => api.post('/practice/explain', { questionId, question, userAnswer }),
+
+    // Get practice history
+    getHistory: (limit = 50) => api.get('/practice/history', { params: { limit } }),
+
+    // Get practice stats
+    getStats: () => api.get('/practice/stats')
 };
 
 export default api;

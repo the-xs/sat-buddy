@@ -44,7 +44,7 @@ const Practice = () => {
 
         setCheckingAnswer(true);
         try {
-            const response = await practiceAPI.checkAnswer(question, userAnswer);
+            const response = await practiceAPI.checkAnswer(question.id, question, userAnswer);
             if (response.success) {
                 setResult(response.data);
             }
@@ -60,7 +60,7 @@ const Practice = () => {
 
         setLoadingExplanation(true);
         try {
-            const response = await practiceAPI.explainAnswer(question, userAnswer);
+            const response = await practiceAPI.explainAnswer(question.id, question, userAnswer);
             if (response.success) {
                 setExplanation(response.data.explanation);
             }

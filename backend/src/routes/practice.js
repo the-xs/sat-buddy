@@ -17,8 +17,8 @@ router.post('/generate', async (req, res, next) => {
 // Check user's answer
 router.post('/check', async (req, res, next) => {
     try {
-        const { question, userAnswer } = req.body;
-        const result = await practiceService.checkAnswer(question, userAnswer);
+        const { questionId, question, userAnswer } = req.body;
+        const result = await practiceService.checkAnswer(questionId, question, userAnswer);
         res.json({ success: true, data: result });
     } catch (error) {
         next(error);
@@ -28,9 +28,30 @@ router.post('/check', async (req, res, next) => {
 // Get detailed explanation
 router.post('/explain', async (req, res, next) => {
     try {
-        const { question, userAnswer } = req.body;
-        const result = await practiceService.explainAnswer(question, userAnswer);
+        const { questionId, question, userAnswer } = req.body;
+        const result = await practiceService.explainAnswer(questionId, question, userAnswer);
         res.json({ success: true, data: result });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Get practice history
+router.get('/history', async (req, res, next) => {
+    try {
+        const { limit = 50 } = req.query;
+        const history = await practiceService.getPracticeHistory(parseInt(limit));
+        res.json({ success: true, data: history });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Get practice stats
+router.get('/stats', async (req, res, next) => {
+    try {
+        const stats = await practiceService.getPracticeStats();
+        res.json({ success: true, data: stats });
     } catch (error) {
         next(error);
     }

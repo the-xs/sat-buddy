@@ -1,10 +1,11 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import prisma from '../config/database.js';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export const practiceService = {
-    // Generate a random SAT question using Gemini
+    // Generate a random SAT question using Gemini and save to database
     async generateQuestion(category = 'random') {
         try {
             const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
@@ -46,18 +47,48 @@ Return ONLY valid JSON. No markdown, no conversation.`;
                 jsonText = jsonText.replace(/```\n?/g, '').replace(/```\n?$/g, '');
             }
 
-            return JSON.parse(jsonText);
+            const questionData = JSON.parse(jsonText);
+
+            // Save to database
+            const savedQuestion = await prisma.practiceQuestion.create({
+                data: {
+                    category: questionData.category,
+                    passage: questionData.passage || null,
+                    questionText: questionData.question,
+                    options: JSON.stringify(questionData.options),
+                    correctAnswer: questionData.correctAnswer,
+                    correctLetter: questionData.correctLetter,
+                }
+            });
+
+            // Return with database ID
+            return {
+                id: savedQuestion.id,
+                ...questionData
+            };
         } catch (error) {
             console.error('Error generating question:', error);
             throw error;
         }
     },
 
-    // Check user's answer
-    async checkAnswer(questionData, userAnswer) {
+    // Check user's answer and update database
+    async checkAnswer(questionId, questionData, userAnswer) {
         try {
             const isCorrect = userAnswer === questionData.correctAnswer ||
                 userAnswer === questionData.correctLetter;
+
+            // Update the database with user's answer
+            if (questionId) {
+                await prisma.practiceQuestion.update({
+                    where: { id: questionId },
+                    data: {
+                        userAnswer: userAnswer,
+                        isCorrect: isCorrect,
+                        answeredAt: new Date()
+                    }
+                });
+            }
 
             return {
                 isCorrect,
@@ -71,8 +102,8 @@ Return ONLY valid JSON. No markdown, no conversation.`;
         }
     },
 
-    // Get detailed explanation from Gemini
-    async explainAnswer(questionData, userAnswer) {
+    // Get detailed explanation from Gemini and save to database
+    async explainAnswer(questionId, questionData, userAnswer) {
         try {
             const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
@@ -98,11 +129,73 @@ Provide a clear, educational explanation:
 Be concise but thorough. Write in a friendly, encouraging tone.`;
 
             const result = await model.generateContent(prompt);
-            return {
-                explanation: result.response.text().trim()
-            };
+            const explanation = result.response.text().trim();
+
+            // Save explanation to database
+            if (questionId) {
+                await prisma.practiceQuestion.update({
+                    where: { id: questionId },
+                    data: { explanation }
+                });
+            }
+
+            return { explanation };
         } catch (error) {
             console.error('Error generating explanation:', error);
+            throw error;
+        }
+    },
+
+    // Get practice history
+    async getPracticeHistory(limit = 50) {
+        try {
+            const questions = await prisma.practiceQuestion.findMany({
+                where: { answeredAt: { not: null } },
+                orderBy: { createdAt: 'desc' },
+                take: limit
+            });
+
+            return questions.map(q => ({
+                ...q,
+                options: JSON.parse(q.options)
+            }));
+        } catch (error) {
+            console.error('Error getting practice history:', error);
+            throw error;
+        }
+    },
+
+    // Get practice stats
+    async getPracticeStats() {
+        try {
+            const total = await prisma.practiceQuestion.count({
+                where: { answeredAt: { not: null } }
+            });
+
+            const correct = await prisma.practiceQuestion.count({
+                where: { isCorrect: true }
+            });
+
+            const byCategory = await prisma.practiceQuestion.groupBy({
+                by: ['category'],
+                where: { answeredAt: { not: null } },
+                _count: { id: true },
+                _sum: { isCorrect: true }
+            });
+
+            return {
+                total,
+                correct,
+                wrong: total - correct,
+                accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
+                byCategory: byCategory.map(c => ({
+                    category: c.category,
+                    total: c._count.id,
+                    correct: c._sum.isCorrect || 0
+                }))
+            };
+        } catch (error) {
+            console.error('Error getting practice stats:', error);
             throw error;
         }
     }

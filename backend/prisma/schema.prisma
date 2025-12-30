@@ -139,3 +139,38 @@ model TestResult {
   @@index([questionId])
   @@map("test_results")
 }
+
+// ============================================
+// AI PRACTICE QUESTIONS
+// ============================================
+
+// Stores AI-generated practice questions and user responses
+model PracticeQuestion {
+  id              Int       @id @default(autoincrement())
+  
+  // Question content (from Gemini)
+  category        String    // "Math", "Reading", "Writing"
+  passage         String?   @db.Text // Optional passage for reading questions
+  questionText    String    @map("question_text") @db.Text
+  
+  // Options stored as JSON array
+  options         String    @db.Text // JSON array of options
+  correctAnswer   String    @map("correct_answer") @db.Text
+  correctLetter   String    @map("correct_letter") // A, B, C, or D
+  
+  // User's response
+  userAnswer      String?   @map("user_answer") @db.Text
+  isCorrect       Boolean?  @map("is_correct")
+  
+  // AI explanation (fetched on demand)
+  explanation     String?   @db.Text
+  
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  answeredAt      DateTime? @map("answered_at")
+
+  @@index([category])
+  @@index([isCorrect])
+  @@index([createdAt])
+  @@map("practice_questions")
+}

@@ -21,23 +21,37 @@
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--glass-border);
-  padding: var(--spacing-sm) 0;
   position: sticky;
   top: 0;
   z-index: 90;
   box-shadow: var(--shadow-sm);
+  height: 60px;
+  display: flex;
+  align-items: center;
+}
+
+.app-header .container {
+  padding-top: 0;
+  padding-bottom: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  width: 100%;
 }
 
 .header-content {
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  height: 100%;
+  width: 100%;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
+  height: 100%;
 }
 
 .logo {
@@ -46,7 +60,7 @@
 
 .app-main {
   flex: 1;
-  padding: var(--spacing-xl) 0;
+  padding: var(--spacing-xs) 0;
 }
 
 .app-footer {

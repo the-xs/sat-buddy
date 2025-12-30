@@ -1,9 +1,9 @@
 .dashboard {
-    padding: var(--spacing-lg);
+    padding: var(--spacing-sm);
 }
 
 .dashboard-header {
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: var(--spacing-sm);
 }
 
 .dashboard-header h1 {

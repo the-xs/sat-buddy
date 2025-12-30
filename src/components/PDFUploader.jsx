@@ -197,24 +197,8 @@ const PDFUploader = ({ onUploadComplete }) => {
                 </button>
             </div>
 
-            <div className="format-hint">
-                <h4>Expected PDF Format:</h4>
-                <pre>
-                    {`Question 1: What is 2 + 2?
-A) 3
-B) 4
-C) 5
-D) 6
-Answer: B
-
-Explanation: 2 + 2 = 4
-
-Question 2: ...`}
-                </pre>
-                <p className="hint-note">
-                    <strong>Note:</strong> The PDF can contain both Math and English questions.
-                    Questions will be automatically categorized during upload.
-                </p>
+            <div className="ai-hint">
+                <p>🤖 Our AI will automatically recognize and import questions from your PDF - no special format required!</p>
             </div>
         </div>
     );

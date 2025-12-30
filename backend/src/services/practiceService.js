@@ -7,7 +7,7 @@ export const practiceService = {
     // Generate a random SAT question using Gemini
     async generateQuestion(category = 'random') {
         try {
-            const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+            const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
 
             const categoryPrompt = category === 'random'
                 ? 'Choose randomly from Math, Reading Comprehension, or Writing & Language'

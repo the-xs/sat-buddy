@@ -1,9 +1,9 @@
 .analytics {
-    padding: var(--spacing-lg);
+    padding: var(--spacing-sm);
 }
 
 .analytics-header {
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: var(--spacing-sm);
 }
 
 .analytics-header h1 {

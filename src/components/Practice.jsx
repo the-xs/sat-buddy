@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Sparkles, CheckCircle, XCircle, HelpCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Sparkles, CheckCircle, XCircle, HelpCircle, ArrowRight, Loader2, History, ChevronDown, ChevronUp } from 'lucide-react';
 import { practiceAPI } from '../services/api';
 import './Practice.css';
 
 const Practice = () => {
+    const [activeTab, setActiveTab] = useState('practice');
     const [category, setCategory] = useState('random');
     const [question, setQuestion] = useState(null);
     const [userAnswer, setUserAnswer] = useState('');
@@ -12,6 +13,9 @@ const Practice = () => {
     const [loading, setLoading] = useState(false);
     const [checkingAnswer, setCheckingAnswer] = useState(false);
     const [loadingExplanation, setLoadingExplanation] = useState(false);
+    const [history, setHistory] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+    const [expandedId, setExpandedId] = useState(null);
 
     const categories = [
         { id: 'random', label: 'Random' },
@@ -19,6 +23,26 @@ const Practice = () => {
         { id: 'reading', label: 'Reading' },
         { id: 'writing', label: 'Writing & Language' },
     ];
+
+    useEffect(() => {
+        if (activeTab === 'history') {
+            loadHistory();
+        }
+    }, [activeTab]);
+
+    const loadHistory = async () => {
+        setLoadingHistory(true);
+        try {
+            const response = await practiceAPI.getHistory(50);
+            if (response.success) {
+                setHistory(response.data);
+            }
+        } catch (err) {
+            console.error('Error loading history:', err);
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
 
     const generateQuestion = async () => {
         setLoading(true);
@@ -75,13 +99,12 @@ const Practice = () => {
         generateQuestion();
     };
 
-    return (
-        <div className="practice">
-            <div className="practice-header">
-                <h1><Sparkles size={28} /> AI Practice</h1>
-                <p>Practice with AI-generated SAT questions tailored to your needs.</p>
-            </div>
+    const toggleExpanded = (id) => {
+        setExpandedId(expandedId === id ? null : id);
+    };
 
+    const renderPracticeTab = () => (
+        <>
             {/* Category Selector */}
             <div className="category-selector">
                 {categories.map(cat => (
@@ -234,6 +257,115 @@ const Practice = () => {
                     </div>
                 )}
             </div>
+        </>
+    );
+
+    const renderHistoryTab = () => (
+        <div className="history-content">
+            {loadingHistory ? (
+                <div className="loading-state glass-card">
+                    <Loader2 size={48} className="spinner" />
+                    <p>Loading practice history...</p>
+                </div>
+            ) : history.length === 0 ? (
+                <div className="empty-state glass-card">
+                    <History size={48} />
+                    <h3>No Practice History Yet</h3>
+                    <p>Complete some practice questions to see your history here.</p>
+                    <button className="btn btn-primary" onClick={() => setActiveTab('practice')}>
+                        Start Practicing
+                    </button>
+                </div>
+            ) : (
+                <div className="history-list">
+                    {history.map((item) => (
+                        <div key={item.id} className="history-item glass-card">
+                            <div
+                                className="history-header"
+                                onClick={() => toggleExpanded(item.id)}
+                            >
+                                <div className="history-info">
+                                    <span className={`history-badge ${item.isCorrect ? 'correct' : 'incorrect'}`}>
+                                        {item.isCorrect ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                                        {item.isCorrect ? 'Correct' : 'Incorrect'}
+                                    </span>
+                                    <span className="history-category">{item.category}</span>
+                                    <span className="history-date">
+                                        {new Date(item.answeredAt).toLocaleDateString()} at {new Date(item.answeredAt).toLocaleTimeString()}
+                                    </span>
+                                </div>
+                                <button className="expand-btn">
+                                    {expandedId === item.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                </button>
+                            </div>
+                            <p className="history-question">{item.questionText}</p>
+
+                            {expandedId === item.id && (
+                                <div className="history-details">
+                                    {item.passage && (
+                                        <div className="history-passage">
+                                            <strong>Passage:</strong>
+                                            <p>{item.passage}</p>
+                                        </div>
+                                    )}
+                                    <div className="history-options">
+                                        {item.options.map((option, idx) => (
+                                            <div
+                                                key={idx}
+                                                className={`history-option ${option === item.correctAnswer ? 'correct' : ''} ${option === item.userAnswer && option !== item.correctAnswer ? 'incorrect' : ''}`}
+                                            >
+                                                <span className="option-letter">{String.fromCharCode(65 + idx)}</span>
+                                                <span>{option}</span>
+                                                {option === item.correctAnswer && <CheckCircle size={16} />}
+                                                {option === item.userAnswer && option !== item.correctAnswer && <XCircle size={16} />}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="history-answer-info">
+                                        <p><strong>Your Answer:</strong> {item.userAnswer}</p>
+                                        <p><strong>Correct Answer:</strong> {item.correctAnswer}</p>
+                                    </div>
+                                    {item.explanation && (
+                                        <div className="history-explanation">
+                                            <strong>Explanation:</strong>
+                                            <p>{item.explanation}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+
+    return (
+        <div className="practice">
+            <div className="practice-header">
+                <h1><Sparkles size={28} /> AI Practice</h1>
+                <p>Practice with AI-generated SAT questions tailored to your needs.</p>
+            </div>
+
+            {/* Tab Selector */}
+            <div className="practice-tabs">
+                <button
+                    className={`tab-btn ${activeTab === 'practice' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('practice')}
+                >
+                    <Sparkles size={18} />
+                    Practice
+                </button>
+                <button
+                    className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('history')}
+                >
+                    <History size={18} />
+                    History
+                </button>
+            </div>
+
+            {activeTab === 'practice' ? renderPracticeTab() : renderHistoryTab()}
         </div>
     );
 };

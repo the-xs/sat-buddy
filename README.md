@@ -1,134 +1,93 @@
-# SAT Buddy 📚
+# SAT Buddy �
 
-A comprehensive SAT testing companion application built with ReactJS. Upload SAT exam questions from PDF files, conduct mock tests, and review results with detailed explanations.
+SAT Buddy is a state-of-the-art, AI-powered testing companion designed to revolutionize your SAT preparation. Leveraging the power of Google Gemini, it provides on-demand practice questions, intelligent PDF parsing, and persistent progress tracking.
 
-![SAT Buddy](https://img.shields.io/badge/React-19.2.0-blue)
-![Vite](https://img.shields.io/badge/Vite-7.2.4-purple)
-![License](https://img.shields.io/badge/license-MIT-green)
+![SAT Buddy Logo](public/logo.png)
 
 ## ✨ Features
 
-- **📄 PDF Upload**: Drag-and-drop PDF files containing SAT questions
-- **💾 Local Storage**: Questions stored in IndexedDB for offline access
-- **📝 Mock Tests**: Configurable tests with random question selection
-- **✅ Answer Validation**: Automatic grading with visual feedback
-- **📊 Detailed Results**: Score display with explanations for each question
-- **🎨 Premium UI**: Modern dark mode with glassmorphism effects
-- **📱 Responsive**: Works seamlessly on desktop and mobile devices
+- **🤖 AI-Powered Practice**: Instantly generate Math, Reading, or Writing practice questions tailored to SAT standards.
+- **🧑‍🏫 AI Tutoring**: Get detailed, step-by-step explanations for any question with a single click.
+- **� Timed Test Mode**: Simulate real exam conditions with full-length modules and automatic time tracking.
+- **📊 Real-time PDF Upload**: Smart PDF parsing with a visual progress bar and background processing—no strict formatting required!
+- **� Persistent History**: Every attempt is saved to a central database, allowing you to review your growth over time.
+- **🎨 Premium Interface**: Modern, responsive layout with a collapsible sidebar and multi-theme support (Dark, Light, Gruvbox, and Tokyo Night).
+- **� Analytics Dashboard**: Track your accuracy and performance breakdown across categories.
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js 16+ and npm
+- **Node.js**: v18+
+- **Database**: MySQL (or any Prisma-supported DB)
+- **API Key**: A Google Gemini API Key
 
 ### Installation
 
-```bash
-# Clone or navigate to the project directory
-cd sat-buddy
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/your-repo/sat-buddy.git
+   cd sat-buddy
+   ```
 
-# Install dependencies
-npm install
+2. **Backend Setup**:
+   ```bash
+   cd backend
+   npm install
+   ```
+   Create a `.env` file in the `backend` directory:
+   ```env
+   PORT=3000
+   DATABASE_URL="mysql://user:pass@localhost:3306/sat_buddy"
+   GEMINI_API_KEY="your_api_key_here"
+   ```
+   Initialize the database:
+   ```bash
+   npx prisma db push
+   ```
 
-# Start development server
-npm run dev
-```
+3. **Frontend Setup**:
+   ```bash
+   cd ..
+   npm install
+   ```
 
-Open [http://localhost:5173/](http://localhost:5173/) in your browser.
+### Running Locally
 
-## 📖 Usage
+1. **Start Backend**:
+   ```bash
+   cd backend
+   npm run dev
+   ```
 
-### 1. Upload Questions
+2. **Start Frontend**:
+   ```bash
+   cd ..
+   npm run dev
+   ```
 
-1. Click **"Upload Questions"** from the home page
-2. Select category (Math or English)
-3. Upload a PDF file with SAT questions
-4. Questions are automatically parsed and stored
+Access the app at [http://localhost:5173/](http://localhost:5173/)
 
-**Expected PDF Format:**
-```
-Question 1: What is 2 + 2?
-A) 3
-B) 4
-C) 5
-D) 6
-Answer: B
+## 🏗️ Technical Stack
 
-Explanation: Basic arithmetic...
-```
+- **Frontend**: React 19, Vite, Lucide Icons, Vanilla CSS (Modern CSS variables)
+- **Backend**: Node.js, Express
+- **Database**: MySQL with **Prisma ORM**
+- **AI Engine**: Google Gemini (Pro & Flash models)
+- **API Communication**: Axios with polling for long-running tasks
 
-### 2. Take Mock Test
+## 🎨 Design Philosophy
 
-1. Click **"Take Mock Test"**
-2. Configure test (category and number of questions)
-3. Answer questions and navigate using the question grid
-4. Submit test when complete
-
-### 3. Review Results
-
-- View your score and letter grade
-- See correct/incorrect answers with visual indicators (✓/✗)
-- Click **"Show me why"** for detailed explanations
-
-## 🏗️ Project Structure
-
-```
-sat-buddy/
-├── src/
-│   ├── components/          # React components
-│   │   ├── PDFUploader.jsx  # PDF upload and parsing
-│   │   ├── MockTest.jsx     # Test administration
-│   │   ├── QuestionCard.jsx # Question display
-│   │   └── TestResults.jsx  # Results and explanations
-│   ├── db.js                # IndexedDB configuration
-│   ├── App.jsx              # Main application
-│   └── index.css            # Global styles
-├── package.json
-└── vite.config.js
-```
-
-## 🛠️ Technologies
-
-- **React 19.2.0** - UI framework
-- **Vite 7.2.4** - Build tool and dev server
-- **Dexie.js** - IndexedDB wrapper
-- **pdfjs-dist** - PDF parsing
-- **Lucide React** - Icon library
-
-## 🎨 Design
-
-- **Dark Mode**: Premium dark theme with purple/indigo gradients
-- **Glassmorphism**: Semi-transparent cards with backdrop blur
-- **Animations**: Smooth transitions and hover effects
-- **Typography**: Inter font family
-- **Responsive**: Mobile-first design
-
-## 📝 Sample Data
-
-A sample question file is included at `sample-questions.txt`. Convert it to PDF and upload to test the application.
-
-## 🔮 Future Enhancements
-
-- Enhanced PDF parsing for complex formats
-- Manual question editing interface
-- Test history and analytics
-- Timed test mode
-- Export results to PDF/CSV
-- Dark/light theme toggle
-
-## 📄 License
-
-MIT License - feel free to use this project for your own SAT preparation!
+SAT Buddy follows a "Zero-Waste" design system:
+- **Glassmorphism**: Elegant semi-transparent surfaces with backdrop filters.
+- **Micro-animations**: Smooth transitions and loading states for a premium feel.
+- **High Information Density**: Minimized whitespace to keep focus on learning.
+- **Accessibility**: High-contrast themes for long study sessions.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Feel free to submit issues or pull requests.
-
-## 📧 Support
-
-For questions or issues, please open an issue on the repository.
+We welcome contributions! Please open an issue or submit a pull request if you have ideas for improvement.
 
 ---
 
-Built with ❤️ using React and Vite
+Built with ❤️ for students everywhere.

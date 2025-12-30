@@ -2,7 +2,7 @@ import { pdfService } from '../services/pdfService.js';
 import { satTestService } from '../services/satTestService.js';
 
 export const uploadController = {
-    // POST /api/upload/pdf - Upload and parse PDF, save to database
+    // POST /api/upload/pdf - Upload and parse PDF (background)
     async uploadPDF(req, res, next) {
         try {
             if (!req.file) {
@@ -12,24 +12,35 @@ export const uploadController = {
                 });
             }
 
-            const satTest = await pdfService.parsePDF(req.file.path, req.file.originalname);
+            const jobId = req.file.filename; // Use multer's filename as jobId
+            const filePath = req.file.path;
+            const originalName = req.file.originalname;
 
-            // Get stats for response
-            const stats = await satTestService.getTestStats(satTest.id);
+            // Start parsing in the background
+            pdfService.parsePDF(filePath, originalName).catch(err => {
+                console.error(`Background parsing error for ${jobId}:`, err);
+            });
 
-            res.status(201).json({
+            // Return jobId immediately
+            res.status(202).json({
                 success: true,
-                message: `Successfully uploaded and parsed: ${satTest.name}`,
-                data: {
-                    testId: satTest.id,
-                    testName: satTest.name,
-                    pdfFilename: satTest.pdfFilename,
-                    ...stats
-                }
+                message: 'Upload successful, processing started',
+                data: { jobId }
             });
         } catch (error) {
             next(error);
         }
+    },
+
+    // GET /api/upload/status/:jobId - Get processing status
+    async getStatus(req, res) {
+        const { jobId } = req.params;
+        const status = pdfService.getProgress(jobId);
+
+        res.json({
+            success: true,
+            data: status
+        });
     },
 
     // POST /api/upload/test - Test parsing without saving to database

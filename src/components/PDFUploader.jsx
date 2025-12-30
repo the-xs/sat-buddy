@@ -6,7 +6,7 @@ import './PDFUploader.css';
 const PDFUploader = ({ onUploadComplete }) => {
     const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
-    const [progress, setProgress] = useState('');
+    const [progress, setProgress] = useState({ status: '', progress: 0 });
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [dragActive, setDragActive] = useState(false);
@@ -50,6 +50,40 @@ const PDFUploader = ({ onUploadComplete }) => {
         }
     };
 
+    const pollStatus = async (jobId) => {
+        try {
+            const response = await uploadAPI.getUploadStatus(jobId);
+            if (response.success) {
+                const { status, progress: progressVal, result } = response.data;
+                setProgress({ status, progress: progressVal });
+
+                if (progressVal === 100) {
+                    setUploading(false);
+                    setSuccess(true);
+                    setUploadResult(result);
+
+                    setTimeout(() => {
+                        if (onUploadComplete) onUploadComplete(result);
+                    }, 1500);
+                    return;
+                }
+
+                if (progressVal === -1) {
+                    setError(status.replace('Error: ', ''));
+                    setUploading(false);
+                    return;
+                }
+
+                // Poll again after 2 seconds
+                setTimeout(() => pollStatus(jobId), 1500);
+            }
+        } catch (err) {
+            console.error('Error polling status:', err);
+            setError('Lost connection to server. Checking progress...');
+            setTimeout(() => pollStatus(jobId), 3000);
+        }
+    };
+
     const handleUpload = async () => {
         if (!file) {
             setError('Please select a PDF file');
@@ -59,28 +93,20 @@ const PDFUploader = ({ onUploadComplete }) => {
         setUploading(true);
         setError('');
         setSuccess(false);
-        setProgress('Uploading PDF to server...');
+        setProgress({ status: 'Uploading PDF to server...', progress: 5 });
 
         try {
             const result = await uploadAPI.uploadPDF(file);
 
             if (result.success) {
-                setSuccess(true);
-                setUploadResult(result.data);
-                setProgress(`Successfully uploaded ${result.data.totalQuestions} questions!`);
-
-                setTimeout(() => {
-                    if (onUploadComplete) {
-                        onUploadComplete(result.data);
-                    }
-                }, 1500);
+                const { jobId } = result.data;
+                pollStatus(jobId);
             } else {
                 throw new Error(result.message || 'Upload failed');
             }
         } catch (err) {
             console.error('Upload error:', err);
             setError(err.message || 'Failed to upload PDF. Please try again.');
-        } finally {
             setUploading(false);
         }
     };
@@ -89,7 +115,7 @@ const PDFUploader = ({ onUploadComplete }) => {
         setFile(null);
         setError('');
         setSuccess(false);
-        setProgress('');
+        setProgress({ status: '', progress: 0 });
         setUploadResult(null);
     };
 
@@ -136,29 +162,20 @@ const PDFUploader = ({ onUploadComplete }) => {
                 )}
             </div>
 
-            {progress && (
-                <div className="progress-message">
-                    {uploading && <Loader className="spinner" size={20} />}
-                    <span>{progress}</span>
-                </div>
-            )}
-
-            {uploadResult && success && (
-                <div className="upload-summary">
-                    <h4>Upload Summary:</h4>
-                    <div className="summary-stats">
-                        <div className="stat-item">
-                            <span className="stat-label">Total Questions:</span>
-                            <span className="stat-value">{uploadResult.totalQuestions}</span>
+            {uploading && (
+                <div className="progress-container">
+                    <div className="progress-bar-wrapper">
+                        <div
+                            className="progress-bar-fill"
+                            style={{ width: `${Math.max(5, progress.progress)}%` }}
+                        ></div>
+                    </div>
+                    <div className="progress-info">
+                        <div className="progress-status">
+                            <Loader className="spinner" size={14} />
+                            <span>{progress.status}</span>
                         </div>
-                        <div className="stat-item">
-                            <span className="stat-label">Math Questions:</span>
-                            <span className="stat-value">{uploadResult.mathQuestions}</span>
-                        </div>
-                        <div className="stat-item">
-                            <span className="stat-label">English Questions:</span>
-                            <span className="stat-value">{uploadResult.englishQuestions}</span>
-                        </div>
+                        <span className="progress-percentage">{progress.progress}%</span>
                     </div>
                 </div>
             )}
@@ -173,7 +190,7 @@ const PDFUploader = ({ onUploadComplete }) => {
             {success && (
                 <div className="success-message">
                     <CheckCircle size={20} />
-                    <span>{progress}</span>
+                    <span>Successfully processed and imported!</span>
                 </div>
             )}
 

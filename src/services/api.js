@@ -93,7 +93,7 @@ export const satTestAPI = {
 
 // Upload API
 export const uploadAPI = {
-    // Upload PDF file
+    // Upload and parse PDF
     uploadPDF: (file) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -103,7 +103,10 @@ export const uploadAPI = {
                 'Content-Type': 'multipart/form-data'
             }
         });
-    }
+    },
+
+    // Get upload processing status
+    getUploadStatus: (jobId) => api.get(`/upload/status/${jobId}`)
 };
 
 // Test API

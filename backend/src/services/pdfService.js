@@ -15,10 +15,31 @@ const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 const PDF_DIR = path.join(UPLOADS_DIR, 'pdfs');
 const FIGURES_DIR = path.join(UPLOADS_DIR, 'figures');
 
+// In-memory progress storage
+const progressMap = new Map();
+
 export const pdfService = {
+    // Get progress for a specific file
+    getProgress(filename) {
+        return progressMap.get(filename) || { status: 'starting', progress: 0 };
+    },
+
+    // Update progress for a file
+    updateProgress(filename, status, progress, result = null) {
+        progressMap.set(filename, { status, progress, result, timestamp: Date.now() });
+        // Clean up old entries (older than 10 minutes)
+        for (const [key, value] of progressMap.entries()) {
+            if (Date.now() - value.timestamp > 10 * 60 * 1000) {
+                progressMap.delete(key);
+            }
+        }
+    },
+
     // Parse PDF and store in database
     async parsePDF(filePath, originalName) {
+        const fileId = path.basename(filePath);
         try {
+            this.updateProgress(fileId, 'Storing PDF...', 5);
             console.log('📄 Starting PDF parsing with Gemini 3 Flash (Module-by-Module)...');
 
             // Move PDF to permanent storage
@@ -28,6 +49,7 @@ export const pdfService = {
             await fs.unlink(filePath);
 
             console.log(`📁 Stored PDF at: ${permanentPath}`);
+            this.updateProgress(fileId, 'Uploading to Gemini AI...', 15);
 
             // Upload PDF to Gemini
             console.log('⬆️  Uploading PDF to Gemini...');
@@ -50,7 +72,11 @@ export const pdfService = {
             let testName = originalName.replace('.pdf', '').replace(/[_-]/g, ' ');
 
             // Extract each module sequentially
-            for (const config of moduleConfigs) {
+            for (let i = 0; i < moduleConfigs.length; i++) {
+                const config = moduleConfigs[i];
+                const progressVal = 25 + (i * 15); // 25, 40, 55, 70
+                this.updateProgress(fileId, `Extracting ${config.section} Module ${config.moduleNumber}...`, progressVal);
+
                 console.log(`🔍 Extracting ${config.section} Module ${config.moduleNumber}...`);
                 const result = await this.extractModuleWithGemini(uploadResult.file, config);
 
@@ -71,6 +97,7 @@ export const pdfService = {
                 console.log(`   ✅ Extracted ${result.questions.length} questions for ${config.section} Module ${config.moduleNumber}`);
             }
 
+            this.updateProgress(fileId, 'Cleaning up and saving...', 85);
             const parsedData = {
                 testName: testName,
                 modules: extractedModules
@@ -81,10 +108,13 @@ export const pdfService = {
             console.log('🗑️  Cleaned up Gemini file');
 
             // Store in database
+            this.updateProgress(fileId, 'Saving to database...', 95);
             const satTest = await this.storeInDatabase(parsedData, pdfFilename, originalName);
 
+            this.updateProgress(fileId, 'Complete!', 100, satTest);
             return satTest;
         } catch (error) {
+            this.updateProgress(fileId, `Error: ${error.message}`, -1);
             console.error('PDF parsing error:', error);
             throw error;
         }

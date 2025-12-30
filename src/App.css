@@ -4,20 +4,33 @@
   flex-direction: column;
 }
 
+.app-layout {
+  display: flex;
+  flex: 1;
+}
+
+.app-content {
+  flex: 1;
+  margin-left: 240px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
 .app-header {
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--glass-border);
-  padding: var(--spacing-lg) 0;
+  padding: var(--spacing-sm) 0;
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 90;
   box-shadow: var(--shadow-sm);
 }
 
 .header-content {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
 }
 
@@ -28,43 +41,31 @@
 }
 
 .logo {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  font-size: 1.5rem;
-  font-weight: 800;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  cursor: pointer;
-  transition: transform var(--transition-base);
-}
-
-.logo:hover {
-  transform: scale(1.05);
-}
-
-.logo svg {
-  color: var(--color-primary);
+  display: none;
 }
 
 .app-main {
   flex: 1;
-  padding: var(--spacing-3xl) 0;
+  padding: var(--spacing-xl) 0;
 }
 
 .app-footer {
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
-  padding: var(--spacing-xl) 0;
+  padding: var(--spacing-md) 0;
   text-align: center;
 }
 
 .app-footer p {
   margin: 0;
   color: var(--color-text-tertiary);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .app-content {
+    margin-left: 60px;
+  }
 }
 
 /* Home View */
@@ -253,8 +254,8 @@
 }
 
 .tests-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-lg);
 }
 
@@ -262,6 +263,38 @@
   padding: var(--spacing-xl);
   cursor: pointer;
   transition: all var(--transition-base);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.test-card svg {
+  flex-shrink: 0;
+}
+
+.test-card h4 {
+  flex: 1;
+  min-width: 200px;
+  margin: 0;
+}
+
+.test-card .test-date {
+  color: var(--color-text-tertiary);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.test-card .test-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  flex: 1;
+  min-width: 200px;
+}
+
+.test-card .btn {
+  margin-left: auto;
 }
 
 .test-card:hover {

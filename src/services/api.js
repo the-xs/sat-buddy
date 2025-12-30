@@ -131,4 +131,16 @@ export const testAPI = {
     getAllSessions: () => api.get('/tests')
 };
 
+// Practice API (AI-powered)
+export const practiceAPI = {
+    // Generate a random SAT question
+    generateQuestion: (category = 'random') => api.post('/practice/generate', { category }),
+
+    // Check user's answer
+    checkAnswer: (question, userAnswer) => api.post('/practice/check', { question, userAnswer }),
+
+    // Get detailed explanation
+    explainAnswer: (question, userAnswer) => api.post('/practice/explain', { question, userAnswer })
+};
+
 export default api;

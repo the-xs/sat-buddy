@@ -165,11 +165,16 @@ model PracticeQuestion {
   // AI explanation (fetched on demand)
   explanation     String?   @db.Text
   
+  // Tagging
+  topic           String?   // e.g., "Heart of Algebra", "Standard English Conventions"
+  difficulty      String?   // "Easy", "Medium", "Hard"
+  
   // Timestamps
   createdAt       DateTime  @default(now()) @map("created_at")
   answeredAt      DateTime? @map("answered_at")
 
   @@index([category])
+  @@index([topic])
   @@index([isCorrect])
   @@index([createdAt])
   @@map("practice_questions")

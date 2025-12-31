@@ -1,35 +1,41 @@
-import { Clock, Zap } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Clock, Zap, AlertCircle, Loader2 } from 'lucide-react';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, ResponsiveContainer } from 'recharts';
+import { analyticsAPI } from '../services/api';
 import './Analytics.css';
 
 const Analytics = ({ pastSessions }) => {
-    // Calculate skill distribution from past sessions
-    // For now, using mock data - in production, this would come from detailed question tracking
-    const skillData = [
-        { subject: 'Algebra', target: 100, you: 75 },
-        { subject: 'Geometry', target: 100, you: 65 },
-        { subject: 'Grammar', target: 100, you: 80 },
-        { subject: 'Reading', target: 100, you: 70 },
-        { subject: 'Problem Solving', target: 100, you: 60 },
-        { subject: 'Vocabulary', target: 100, you: 85 },
-    ];
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    // Topic mastery data
-    const topicMastery = [
-        { topic: 'Heart of Algebra', progress: 92, status: 'Mastered' },
-        { topic: 'Standard Conventions', progress: 68, status: 'Improving' },
-        { topic: 'Data Analysis', progress: 45, status: 'Needs Focus' },
-        { topic: 'Advanced Math', progress: 30, status: 'New Topic' },
-    ];
+    useEffect(() => {
+        fetchAnalytics();
+    }, [pastSessions]);
 
-    // Calculate overall stats
-    const totalQuestions = pastSessions.reduce((sum, s) => sum + s.totalQuestions, 0);
-    const totalCorrect = pastSessions.reduce((sum, s) => sum + s.totalScore, 0);
+    const fetchAnalytics = async () => {
+        try {
+            setLoading(true);
+            const response = await analyticsAPI.getData();
+            if (response.success) {
+                setData(response.data);
+            }
+        } catch (err) {
+            console.error('Error fetching analytics:', err);
+            setError('Failed to load real-time analytics data.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Overall stats calculations
+    const totalQuestions = pastSessions.reduce((sum, s) => sum + (s.totalQuestions || 0), 0);
+    const totalCorrect = pastSessions.reduce((sum, s) => sum + (s.totalScore || 0), 0);
     const accuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
 
-    // Mock avg time (in a real app, this would be tracked)
+    // Mock avg time for now (time tracking per question not yet implemented in backend core)
     const avgTime = '42s';
-    const timeChange = '12% faster than last week';
+    const timeChange = 'Consistent with baseline';
 
     const getStatusClass = (status) => {
         switch (status) {
@@ -40,11 +46,32 @@ const Analytics = ({ pastSessions }) => {
         }
     };
 
+    if (loading) {
+        return (
+            <div className="analytics-loading">
+                <Loader2 className="animate-spin" size={48} />
+                <p>Calculating your performance metrics...</p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="analytics-error card glass-card">
+                <AlertCircle size={48} />
+                <p>{error}</p>
+                <button onClick={fetchAnalytics} className="btn btn-primary">Retry</button>
+            </div>
+        );
+    }
+
+    const { skillData, topicMastery } = data || { skillData: [], topicMastery: [] };
+
     return (
         <div className="analytics">
             <div className="analytics-header">
                 <h1>Performance Analytics</h1>
-                <p>Deep dive into your strengths and growth areas.</p>
+                <p>Real-time insights derived from your practice history and test results.</p>
             </div>
 
             <div className="analytics-grid">
@@ -69,10 +96,10 @@ const Analytics = ({ pastSessions }) => {
                                     dataKey="target"
                                     stroke="var(--color-border)"
                                     fill="var(--color-border)"
-                                    fillOpacity={0.3}
+                                    fillOpacity={0.1}
                                 />
                                 <Radar
-                                    name="You"
+                                    name="Your Accuracy"
                                     dataKey="you"
                                     stroke="var(--color-primary)"
                                     fill="var(--color-primary)"
@@ -87,24 +114,30 @@ const Analytics = ({ pastSessions }) => {
                 {/* Topic Mastery */}
                 <section className="analytics-card glass-card">
                     <h2>Topic Mastery</h2>
-                    <div className="topic-list">
-                        {topicMastery.map((topic, index) => (
-                            <div key={index} className="topic-item">
-                                <div className="topic-header">
-                                    <span className="topic-name">{topic.topic}</span>
-                                    <span className={`topic-status ${getStatusClass(topic.status)}`}>
-                                        {topic.status}
-                                    </span>
+                    {topicMastery.length === 0 ? (
+                        <div className="empty-state">
+                            <p>Not enough data yet. Complete more practice questions to see topic breakdowns.</p>
+                        </div>
+                    ) : (
+                        <div className="topic-list">
+                            {topicMastery.map((topic, index) => (
+                                <div key={index} className="topic-item">
+                                    <div className="topic-header">
+                                        <span className="topic-name">{topic.topic}</span>
+                                        <span className={`topic-status ${getStatusClass(topic.status)}`}>
+                                            {topic.status}
+                                        </span>
+                                    </div>
+                                    <div className="topic-progress">
+                                        <div
+                                            className={`topic-progress-fill ${getStatusClass(topic.status)}`}
+                                            style={{ width: `${topic.progress}%` }}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="topic-progress">
-                                    <div
-                                        className={`topic-progress-fill ${getStatusClass(topic.status)}`}
-                                        style={{ width: `${topic.progress}%` }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Stats Cards */}
                     <div className="analytics-stats">
@@ -115,7 +148,7 @@ const Analytics = ({ pastSessions }) => {
                             <div className="stat-info">
                                 <span className="stat-label">AVG. TIME / Q</span>
                                 <span className="stat-value">{avgTime}</span>
-                                <span className="stat-change positive">{timeChange}</span>
+                                <span className="stat-change">{timeChange}</span>
                             </div>
                         </div>
                         <div className="analytics-stat">
@@ -123,9 +156,9 @@ const Analytics = ({ pastSessions }) => {
                                 <Zap size={20} />
                             </div>
                             <div className="stat-info">
-                                <span className="stat-label">ACCURACY</span>
+                                <span className="stat-label">OVERALL ACCURACY</span>
                                 <span className="stat-value">{accuracy}%</span>
-                                <span className="stat-change">Consistent with target</span>
+                                <span className="stat-change positive">Based on {totalQuestions} total questions</span>
                             </div>
                         </div>
                     </div>

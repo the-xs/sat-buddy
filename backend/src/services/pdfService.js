@@ -149,6 +149,8 @@ Extract EVERY question for this specific module.
       "questionNumber": 1,
       "questionType": "MultipleChoice" or "FreeResponse",
       "questionText": "full question text",
+      "topic": "SAT Topic (e.g., Heart of Algebra, Rhetoric, Standard English Conventions)",
+      "difficulty": "Easy", "Medium", or "Hard",
       "hasFigure": true or false,
       "figureDescription": "detailed description" or null,
       "pageNumber": integer or null,
@@ -227,6 +229,8 @@ Return ONLY valid JSON. No conversational text.`;
                                 optionC: q.optionC || null,
                                 optionD: q.optionD || null,
                                 correctAnswer: String(q.correctAnswer),
+                                topic: q.topic || 'General',
+                                difficulty: q.difficulty || 'Medium',
                                 explanation: q.explanation || ''
                             }))
                         }

@@ -4,6 +4,7 @@ import cors from 'cors';
 import uploadRoutes from './routes/upload.js';
 import testRoutes from './routes/tests.js';
 import practiceRoutes from './routes/practice.js';
+import analyticsRoutes from './routes/analytics.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import prisma from './config/database.js';
 
@@ -37,6 +38,7 @@ app.get('/health', (req, res) => {
 app.use('/api/upload', uploadRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/practice', practiceRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // 404 handler
 app.use(notFound);

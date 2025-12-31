@@ -152,4 +152,8 @@ export const practiceAPI = {
     getStats: () => api.get('/practice/stats')
 };
 
+export const analyticsAPI = {
+    getData: () => api.get('/analytics')
+};
+
 export default api;

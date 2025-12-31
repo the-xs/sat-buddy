@@ -23,10 +23,14 @@ export const practiceService = {
 2. For Reading/Writing, include a short passage (2-3 sentences) if relevant
 3. Provide exactly 4 answer choices (A, B, C, D)
 4. Include the correct answer and a brief explanation
+5. Assign a standard SAT topic (e.g., "Heart of Algebra", "Problem Solving and Data Analysis", "Passport to Advanced Math", "Information and Ideas", "Rhetoric", "Standard English Conventions")
+6. Assign a difficulty level ("Easy", "Medium", "Hard")
 
 **OUTPUT FORMAT - Return valid JSON only:**
 {
     "category": "Math" or "Reading" or "Writing",
+    "topic": "Standard SAT Topic",
+    "difficulty": "Easy" or "Medium" or "Hard",
     "passage": "optional passage text" or null,
     "question": "the question text",
     "options": ["option A", "option B", "option C", "option D"],
@@ -53,6 +57,8 @@ Return ONLY valid JSON. No markdown, no conversation.`;
             const savedQuestion = await prisma.practiceQuestion.create({
                 data: {
                     category: questionData.category,
+                    topic: questionData.topic || 'General',
+                    difficulty: questionData.difficulty || 'Medium',
                     passage: questionData.passage || null,
                     questionText: questionData.question,
                     options: JSON.stringify(questionData.options),

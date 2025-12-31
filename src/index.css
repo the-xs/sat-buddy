@@ -14,9 +14,9 @@
   --color-accent: hsl(215, 30%, 45%);
 
   --color-success: hsl(142, 76%, 45%);
-  --color-success-light: hsl(142, 76%, 95%);
+  --color-success-light: hsla(142, 76%, 45%, 0.15);
   --color-error: hsl(0, 84%, 60%);
-  --color-error-light: hsl(0, 84%, 95%);
+  --color-error-light: hsla(0, 84%, 60%, 0.15);
   --color-warning: hsl(38, 92%, 50%);
 
   /* Neutral Colors */
@@ -102,6 +102,10 @@
   --primary-hue: 215;
   --primary-sat: 30%;
   --primary-light: 45%;
+
+  /* Light theme needs solid light colors for success/error backgrounds */
+  --color-success-light: hsl(142, 76%, 95%);
+  --color-error-light: hsl(0, 84%, 95%);
 }
 
 /* Gruvbox Theme */

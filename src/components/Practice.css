@@ -156,6 +156,8 @@
     text-align: left;
     cursor: pointer;
     transition: all var(--transition-base);
+    color: var(--color-text);
+    font-family: inherit;
 }
 
 .option-btn:hover:not(:disabled) {

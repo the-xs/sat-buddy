@@ -447,6 +447,7 @@ const MockTest = ({ test, onTestComplete }) => {
                     question={{
                         ...currentQuestion,
                         questionText: currentQuestion.questionText,
+                        questionType: currentQuestion.questionType,
                         options: [
                             currentQuestion.optionA,
                             currentQuestion.optionB,

@@ -61,6 +61,8 @@
     transition: all var(--transition-base);
     text-align: left;
     width: 100%;
+    color: var(--color-text);
+    font-family: inherit;
 }
 
 .option:hover {
@@ -160,5 +162,110 @@
 
     .option-text {
         font-size: 0.9375rem;
+    }
+}
+
+/* Free Response Question Styles */
+.question-type-badge {
+    display: inline-block;
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: var(--color-warning);
+    color: #000;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: var(--spacing-sm);
+}
+
+.free-response-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.free-response-input-wrapper {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+.free-response-input {
+    flex: 1;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--color-surface);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    font-size: 1rem;
+    font-family: inherit;
+    transition: all var(--transition-base);
+}
+
+.free-response-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px hsla(var(--primary-hue), var(--primary-sat), var(--primary-light), 0.2);
+}
+
+.free-response-input::placeholder {
+    color: var(--color-text-tertiary);
+}
+
+.free-response-input:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.free-response-input.correct {
+    border-color: var(--color-success);
+    background: var(--color-success-light);
+}
+
+.free-response-input.incorrect {
+    border-color: var(--color-error);
+    background: var(--color-error-light);
+}
+
+.free-response-submit {
+    flex-shrink: 0;
+}
+
+.free-response-result {
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-weight: 500;
+}
+
+.free-response-result p {
+    margin: 0;
+}
+
+.free-response-result.correct {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.free-response-result.incorrect {
+    background: var(--color-error-light);
+    color: var(--color-error);
+}
+
+.free-response-result strong {
+    font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .free-response-input-wrapper {
+        flex-direction: column;
+    }
+
+    .free-response-input {
+        width: 100%;
+    }
+
+    .free-response-submit {
+        width: 100%;
     }
 }

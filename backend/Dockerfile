@@ -1,10 +1,22 @@
-FROM node:20-alpine
+FROM node:20-slim
 
 WORKDIR /app
 
+# Install build dependencies for native modules (canvas, sharp)
+RUN apt-get update && apt-get install -y \
+    python3 \
+    build-essential \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
+    libpixman-1-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy Prisma schema and generate client
 COPY prisma ./prisma/

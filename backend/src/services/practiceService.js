@@ -111,7 +111,7 @@ Return ONLY valid JSON. No markdown, no conversation.`;
     // Get detailed explanation from Gemini and save to database
     async explainAnswer(questionId, questionData, userAnswer) {
         try {
-            const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+            const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
 
             const prompt = `You are an expert SAT tutor. Explain why the correct answer is correct and why the other options are wrong.
 

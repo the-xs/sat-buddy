@@ -9,7 +9,7 @@ import TestResults from '@/components/TestResults';
 import Analytics from '@/components/Analytics';
 import Practice from '@/components/Practice';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
-import '@/src/App.css';
+import './App.css';
 
 // Types
 interface SATTest {

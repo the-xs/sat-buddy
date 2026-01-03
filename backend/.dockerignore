@@ -1,8 +1,0 @@
-node_modules
-.env
-.env.*
-.git
-*.log
-uploads/*
-*.md
-.gitignore

@@ -27,3 +27,6 @@ backend/uploads
 *.njsproj
 *.sln
 *.sw?
+
+# Next.js
+.next/

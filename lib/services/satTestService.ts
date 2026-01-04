@@ -221,7 +221,7 @@ export const satTestService = {
             throw new Error('Question not found');
         }
 
-        const isCorrect = answer && answer.toUpperCase() === question.correctAnswer?.toUpperCase();
+        const isCorrect = Boolean(answer && answer.toUpperCase() === question.correctAnswer?.toUpperCase());
 
         // Upsert the result (update if exists, create if not)
         const result = await prisma.testResult.upsert({

@@ -2,16 +2,48 @@
 import { FileText, CheckCircle, XCircle, History, PlayCircle, BarChart3 } from 'lucide-react';
 import './Dashboard.css';
 
+interface SATTest {
+    id: number;
+    name: string;
+    uploadedAt: string;
+    modules: Array<{
+        id: number;
+        section: string;
+        moduleNumber: number;
+        _count?: { questions: number };
+    }>;
+}
+
+interface TestSession {
+    sessionId: string;
+    testId: number;
+    testName: string;
+    rwScore: number | null;
+    mathScore: number | null;
+    totalScore: number | null;
+    totalQuestions: number;
+    startedAt: string;
+    completedAt: string | null;
+}
+
+interface DashboardProps {
+    satTests: SATTest[];
+    pastSessions: TestSession[];
+    onSelectTest: (test: SATTest) => void;
+    onViewResults: (sessionId: string) => void;
+    loading: boolean;
+}
+
 const Dashboard = ({
     satTests,
     pastSessions,
     onSelectTest,
     onViewResults,
     loading
-}) => {
+}: DashboardProps) => {
     // Calculate overall stats from past sessions
     const totalAnswered = pastSessions.reduce((sum, s) => sum + s.totalQuestions, 0);
-    const totalCorrect = pastSessions.reduce((sum, s) => sum + s.totalScore, 0);
+    const totalCorrect = pastSessions.reduce((sum, s) => sum + (s.totalScore ?? 0), 0);
     const totalWrong = totalAnswered - totalCorrect;
     const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
 
@@ -117,7 +149,7 @@ const Dashboard = ({
                             <div className="results-list">
                                 {pastSessions.slice(0, 5).map(session => {
                                     const percentage = session.totalQuestions > 0
-                                        ? Math.round((session.totalScore / session.totalQuestions) * 100)
+                                        ? Math.round(((session.totalScore ?? 0) / session.totalQuestions) * 100)
                                         : 0;
                                     return (
                                         <div
@@ -128,7 +160,7 @@ const Dashboard = ({
                                             <div className="result-info">
                                                 <h4>{session.testName}</h4>
                                                 <p className="result-meta">
-                                                    {new Date(session.completedAt).toLocaleDateString()} at {new Date(session.completedAt).toLocaleTimeString()}
+                                                    {session.completedAt ? new Date(session.completedAt).toLocaleDateString() : 'N/A'} at {session.completedAt ? new Date(session.completedAt).toLocaleTimeString() : 'N/A'}
                                                 </p>
                                             </div>
                                             <div className="result-score">
@@ -136,7 +168,7 @@ const Dashboard = ({
                                                     {percentage}%
                                                 </span>
                                                 <span className="score-detail">
-                                                    {session.totalScore}/{session.totalQuestions}
+                                                    {session.totalScore ?? 0}/{session.totalQuestions}
                                                 </span>
                                             </div>
                                         </div>

@@ -4,8 +4,37 @@ import { CheckCircle, XCircle, Award, TrendingUp } from 'lucide-react';
 import QuestionCard from './QuestionCard';
 import './TestResults.css';
 
-const TestResults = ({ sessionData, onReturnHome }) => {
-    const [expandedQuestion, setExpandedQuestion] = useState(null);
+interface ResultItem {
+    questionNumber: number;
+    moduleSection: string;
+    moduleNumber: number;
+    isCorrect: boolean;
+    questionText: string;
+    userAnswer: string | null;
+    correctAnswer: string;
+    options?: Record<string, string> | string[];
+    explanation?: string;
+}
+
+interface SessionData {
+    sessionId: string;
+    testId: number;
+    testName: string;
+    rwScore: number | null;
+    mathScore: number | null;
+    totalScore: number | null;
+    totalQuestions: number;
+    correctCount: number;
+    results: ResultItem[];
+}
+
+interface TestResultsProps {
+    sessionData: SessionData | null;
+    onReturnHome: () => void;
+}
+
+const TestResults = ({ sessionData, onReturnHome }: TestResultsProps) => {
+    const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
 
     const results = sessionData?.results || [];
     const correctCount = sessionData?.correctCount || results.filter(r => r.isCorrect).length;
@@ -22,8 +51,17 @@ const TestResults = ({ sessionData, onReturnHome }) => {
 
     const grade = getGrade();
 
-    const toggleExplanation = (index) => {
+    const toggleExplanation = (index: number) => {
         setExpandedQuestion(expandedQuestion === index ? null : index);
+    };
+
+    const getOptionText = (options: Record<string, string> | string[] | undefined, option: string): string => {
+        if (!options) return '';
+        if (Array.isArray(options)) {
+            const idx = ['A', 'B', 'C', 'D'].indexOf(option);
+            return options[idx] || '';
+        }
+        return options[option] || '';
     };
 
     return (
@@ -32,7 +70,7 @@ const TestResults = ({ sessionData, onReturnHome }) => {
                 <div className="score-display">
                     <Award size={64} className="award-icon" />
                     <h1>Test Complete!</h1>
-                    <div className="score-circle" style={{ '--grade-color': grade.color }}>
+                    <div className="score-circle" style={{ '--grade-color': grade.color } as React.CSSProperties}>
                         <span className="percentage">{percentage}%</span>
                         <span className="grade">{grade.letter}</span>
                     </div>
@@ -116,7 +154,7 @@ const TestResults = ({ sessionData, onReturnHome }) => {
                                                     }`}
                                             >
                                                 <span className="option-letter">{option}</span>
-                                                <span className="option-text">{result.options?.[option] || result.options?.[['A', 'B', 'C', 'D'].indexOf(option)]}</span>
+                                                <span className="option-text">{getOptionText(result.options, option)}</span>
                                                 {option === result.correctAnswer && (
                                                     <CheckCircle size={20} className="check-icon" />
                                                 )}

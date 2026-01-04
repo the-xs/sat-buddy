@@ -21,9 +21,14 @@ interface TopicMastery {
 
 export const analyticsService = {
     // Get aggregated analytics data for the user
-    async getAnalytics(): Promise<{ skillData: SkillData[]; topicMastery: TopicMastery[] }> {
+    async getAnalytics(userId?: string): Promise<{ skillData: SkillData[]; topicMastery: TopicMastery[] }> {
         // 1. Fetch data from test_results (uploaded PDF tests)
         const testResults = await prisma.testResult.findMany({
+            where: {
+                ...(userId && {
+                    session: { userId }
+                })
+            },
             include: {
                 question: true
             }
@@ -31,7 +36,10 @@ export const analyticsService = {
 
         // 2. Fetch data from practice_questions (AI-generated practice)
         const practiceQuestions = await prisma.practiceQuestion.findMany({
-            where: { answeredAt: { not: null } }
+            where: {
+                answeredAt: { not: null },
+                ...(userId && { userId })
+            }
         });
 
         // Combine both sources of question outcomes

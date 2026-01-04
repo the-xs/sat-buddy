@@ -5,16 +5,28 @@ import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, 
 import './Analytics.css';
 
 interface PastSession {
-    totalQuestions?: number;
-    totalScore?: number;
+    totalQuestions?: number | null;
+    totalScore?: number | null;
 }
 
 interface AnalyticsProps {
     pastSessions: PastSession[];
 }
 
+interface TopicMastery {
+    topic: string;
+    progress: number;
+    status: string;
+}
+
+interface SkillData {
+    subject: string;
+    target: number;
+    you: number;
+}
+
 const Analytics = ({ pastSessions }: AnalyticsProps) => {
-    const [data, setData] = useState<{ skillData: unknown[]; topicMastery: unknown[] } | null>(null);
+    const [data, setData] = useState<{ skillData: SkillData[]; topicMastery: TopicMastery[] } | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +59,7 @@ const Analytics = ({ pastSessions }: AnalyticsProps) => {
     const avgTime = '42s';
     const timeChange = 'Consistent with baseline';
 
-    const getStatusClass = (status) => {
+    const getStatusClass = (status: string) => {
         switch (status) {
             case 'Mastered': return 'mastered';
             case 'Improving': return 'improving';

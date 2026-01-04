@@ -2,7 +2,27 @@
 import { useState, useEffect } from 'react';
 import './QuestionCard.css';
 
-const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect, showCorrectAnswer = false, figureUrl = null }) => {
+interface QuestionCardProps {
+    question: {
+        id: number;
+        questionText: string;
+        questionType: string;
+        correctAnswer?: string;
+        optionA?: string;
+        optionB?: string;
+        optionC?: string;
+        optionD?: string;
+        options?: (string | undefined)[];
+        figureCaption?: string;
+    };
+    questionNumber: number;
+    selectedAnswer?: string;
+    onAnswerSelect: (answer: string) => void;
+    showCorrectAnswer?: boolean;
+    figureUrl?: string | null;
+}
+
+const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect, showCorrectAnswer = false, figureUrl = null }: QuestionCardProps) => {
     const options = ['A', 'B', 'C', 'D'];
     const [freeResponseValue, setFreeResponseValue] = useState(selectedAnswer || '');
 
@@ -14,7 +34,7 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
     // Check if this is a free response question
     const isFreeResponse = question.questionType === 'FreeResponse';
 
-    const getOptionClass = (option) => {
+    const getOptionClass = (option: string) => {
         const classes = ['option'];
 
         if (showCorrectAnswer) {
@@ -31,7 +51,7 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
         return classes.join(' ');
     };
 
-    const handleFreeResponseChange = (e) => {
+    const handleFreeResponseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setFreeResponseValue(value);
     };
@@ -42,7 +62,7 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
         }
     };
 
-    const handleFreeResponseKeyDown = (e) => {
+    const handleFreeResponseKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             handleFreeResponseSubmit();
         }
@@ -68,7 +88,7 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
                         alt={question.figureCaption || 'Question figure'}
                         className="question-figure"
                         onError={(e) => {
-                            e.target.style.display = 'none';
+                            (e.target as HTMLImageElement).style.display = 'none';
                         }}
                     />
                 </div>
@@ -121,7 +141,7 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
                             disabled={showCorrectAnswer}
                         >
                             <span className="option-letter">{option}</span>
-                            <span className="option-text">{question.options[index]}</span>
+                            <span className="option-text">{question.options?.[index]}</span>
                         </button>
                     ))}
                 </div>

@@ -18,7 +18,7 @@ interface QuestionData {
 
 export const practiceService = {
     // Generate a random SAT question using Gemini and save to database
-    async generateQuestion(category = 'random') {
+    async generateQuestion(category = 'random', userId?: string) {
         const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
 
         const categoryPrompt = category === 'random'
@@ -67,6 +67,7 @@ Return ONLY valid JSON. No markdown, no conversation.`;
         // Save to database
         const savedQuestion = await prisma.practiceQuestion.create({
             data: {
+                userId,
                 category: questionData.category,
                 topic: questionData.topic || 'General',
                 difficulty: questionData.difficulty || 'Medium',
@@ -150,9 +151,12 @@ Be concise but thorough. Write in a friendly, encouraging tone.`;
     },
 
     // Get practice history
-    async getPracticeHistory(limit = 50) {
+    async getPracticeHistory(userId?: string, limit = 50) {
         const questions = await prisma.practiceQuestion.findMany({
-            where: { answeredAt: { not: null } },
+            where: {
+                answeredAt: { not: null },
+                ...(userId && { userId })
+            },
             orderBy: { createdAt: 'desc' },
             take: limit
         });
@@ -164,25 +168,30 @@ Be concise but thorough. Write in a friendly, encouraging tone.`;
     },
 
     // Get practice stats
-    async getPracticeStats() {
+    async getPracticeStats(userId?: string) {
+        const whereClause = {
+            answeredAt: { not: null },
+            ...(userId && { userId })
+        };
+
         const total = await prisma.practiceQuestion.count({
-            where: { answeredAt: { not: null } }
+            where: whereClause
         });
 
         const correct = await prisma.practiceQuestion.count({
-            where: { isCorrect: true }
+            where: { ...whereClause, isCorrect: true }
         });
 
         const byCategory = await prisma.practiceQuestion.groupBy({
             by: ['category'],
-            where: { answeredAt: { not: null } },
+            where: whereClause,
             _count: { id: true }
         });
 
         // Get correct counts by category separately
         const correctByCategory = await prisma.practiceQuestion.groupBy({
             by: ['category'],
-            where: { isCorrect: true },
+            where: { ...whereClause, isCorrect: true },
             _count: { id: true }
         });
 

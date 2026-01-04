@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { satTestService } from '@/lib/services/satTestService';
+import { getAuthenticatedUser } from '@/lib/auth';
 
 // POST /api/sessions - Create a new test session
 export async function POST(request: NextRequest) {
+    const { user, error } = await getAuthenticatedUser();
+    if (error) return error;
+
     try {
         const { testId } = await request.json();
 
@@ -13,7 +17,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const session = await satTestService.createSession(parseInt(testId));
+        const session = await satTestService.createSession(parseInt(testId), user.id);
         return NextResponse.json({ success: true, data: { sessionId: session.sessionId } });
     } catch (error) {
         console.error('Error creating session:', error);
@@ -26,8 +30,11 @@ export async function POST(request: NextRequest) {
 
 // GET /api/sessions - Get all completed sessions
 export async function GET() {
+    const { user, error } = await getAuthenticatedUser();
+    if (error) return error;
+
     try {
-        const sessions = await satTestService.getCompletedSessions();
+        const sessions = await satTestService.getCompletedSessions(user.id);
         return NextResponse.json({ success: true, data: sessions });
     } catch (error) {
         console.error('Error fetching sessions:', error);

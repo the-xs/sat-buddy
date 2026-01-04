@@ -29,6 +29,19 @@
     border-radius: var(--radius-sm);
 }
 
+.sidebar-logo-placeholder {
+    width: 32px;
+    height: 32px;
+    background: var(--gradient-primary);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 700;
+    color: white;
+}
+
 .sidebar-title {
     font-size: 1.25rem;
     font-weight: 800;
@@ -77,6 +90,84 @@
     color: var(--color-primary);
 }
 
+/* User Section */
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-top: 1px solid var(--glass-border);
+    margin-top: auto;
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-avatar span {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+}
+
+.user-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.user-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-email {
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    flex-shrink: 0;
+}
+
+.logout-btn:hover {
+    background: var(--color-error-light);
+    color: var(--color-error);
+}
+
 @media (max-width: 768px) {
     .sidebar {
         width: 60px;
@@ -95,5 +186,18 @@
     .nav-item {
         justify-content: center;
         padding: var(--spacing-md);
+    }
+
+    .sidebar-user {
+        flex-direction: column;
+        padding: var(--spacing-md);
+    }
+
+    .user-info {
+        display: none;
+    }
+
+    .logout-btn {
+        margin-top: var(--spacing-xs);
     }
 }

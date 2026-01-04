@@ -15,6 +15,7 @@ import './App.css';
 interface SATTest {
     id: number;
     name: string;
+    uploadedAt: string;
     modules: Array<{
         id: number;
         section: string;
@@ -35,6 +36,18 @@ interface TestSession {
     completedAt: string | null;
 }
 
+interface ResultItem {
+    questionNumber: number;
+    moduleSection: string;
+    moduleNumber: number;
+    isCorrect: boolean;
+    questionText: string;
+    userAnswer: string | null;
+    correctAnswer: string;
+    options?: Record<string, string> | string[];
+    explanation?: string;
+}
+
 interface SessionResults {
     sessionId: string;
     testId: number;
@@ -44,7 +57,7 @@ interface SessionResults {
     totalScore: number | null;
     totalQuestions: number;
     correctCount: number;
-    results: unknown[];
+    results: ResultItem[];
 }
 
 export default function HomePage() {
@@ -96,8 +109,8 @@ export default function HomePage() {
         }, 2000);
     };
 
-    const handleTestComplete = (results: SessionResults) => {
-        setTestResults(results);
+    const handleTestComplete = (results: unknown) => {
+        setTestResults(results as SessionResults);
         loadPastSessions();
         setCurrentView('results');
     };
@@ -152,7 +165,7 @@ export default function HomePage() {
             case 'upload':
                 return <PDFUploader onUploadComplete={handleUploadComplete} />;
             case 'test':
-                return <MockTest test={selectedTest} onTestComplete={handleTestComplete} />;
+                return <MockTest test={selectedTest ?? undefined} onTestComplete={handleTestComplete} />;
             case 'results':
                 return <TestResults sessionData={testResults} onReturnHome={handleReturnHome} />;
             case 'analytics':

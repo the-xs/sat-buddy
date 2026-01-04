@@ -139,7 +139,7 @@ const Practice = () => {
         generateQuestion();
     };
 
-    const toggleExpanded = (id) => {
+    const toggleExpanded = (id: number) => {
         setExpandedId(expandedId === id ? null : id);
     };
 
@@ -248,7 +248,7 @@ const Practice = () => {
                                     <button
                                         className="btn btn-secondary"
                                         onClick={getExplanation}
-                                        disabled={loadingExplanation || explanation}
+                                        disabled={loadingExplanation || !!explanation}
                                     >
                                         {loadingExplanation ? (
                                             <>

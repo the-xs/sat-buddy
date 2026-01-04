@@ -219,7 +219,7 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
     }, [sessionId, onTestComplete]);
 
     // Get the first question index for a given module index
-    const getModuleStartIndex = useCallback((moduleIdx) => {
+    const getModuleStartIndex = useCallback((moduleIdx: number) => {
         if (!modules[moduleIdx]) return 0;
         const targetModule = modules[moduleIdx];
         for (let i = 0; i < allQuestions.length; i++) {
@@ -317,7 +317,7 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
     }, [currentQuestionIndex, allQuestions, modules, testStarted, isOnBreak, currentModuleIndex]);
 
     // Format time as MM:SS
-    const formatTime = (seconds) => {
+    const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -505,8 +505,8 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
                     }}
                     questionNumber={currentQuestion.questionNumber}
                     selectedAnswer={answers[currentQuestion.id]}
-                    onAnswerSelect={(answer) => handleAnswerSelect(currentQuestion.id, answer)}
-                    figureUrl={currentQuestion.hasFigure ? `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/tests/figure/${currentQuestion.id}` : null}
+                    onAnswerSelect={(answer: string) => handleAnswerSelect(currentQuestion.id, answer)}
+                    figureUrl={currentQuestion.hasFigure ? `/api/tests/figure/${currentQuestion.id}` : undefined}
                 />
             </div>
 

@@ -1,8 +1,16 @@
 'use client';
-import { LayoutDashboard, BarChart3, Dumbbell, Upload, BookOpen } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Dumbbell, Upload, LogOut } from 'lucide-react';
+import { useSession, signOut } from 'next-auth/react';
 import './Sidebar.css';
 
-const Sidebar = ({ activeView, onViewChange }) => {
+interface SidebarProps {
+    activeView: string;
+    onViewChange: (view: string) => void;
+}
+
+const Sidebar = ({ activeView, onViewChange }: SidebarProps) => {
+    const { data: session } = useSession();
+
     const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'analytics', label: 'Analytics', icon: BarChart3 },
@@ -10,10 +18,16 @@ const Sidebar = ({ activeView, onViewChange }) => {
         { id: 'upload', label: 'Upload', icon: Upload },
     ];
 
+    const handleLogout = async () => {
+        await signOut({ callbackUrl: '/login' });
+    };
+
+    const userInitial = session?.user?.name?.[0]?.toUpperCase() || session?.user?.email?.[0]?.toUpperCase() || 'U';
+
     return (
         <aside className="sidebar">
             <div className="sidebar-header">
-                <img src="/logo.png" alt="SAT Buddy Logo" className="sidebar-logo" />
+                <div className="sidebar-logo-placeholder">S</div>
                 <span className="sidebar-title">SAT Buddy</span>
             </div>
             <nav className="sidebar-nav">
@@ -28,6 +42,24 @@ const Sidebar = ({ activeView, onViewChange }) => {
                     </button>
                 ))}
             </nav>
+            {session?.user && (
+                <div className="sidebar-user">
+                    <div className="user-avatar">
+                        {session.user.image ? (
+                            <img src={session.user.image} alt={session.user.name || ''} />
+                        ) : (
+                            <span>{userInitial}</span>
+                        )}
+                    </div>
+                    <div className="user-info">
+                        <span className="user-name">{session.user.name || 'User'}</span>
+                        <span className="user-email">{session.user.email}</span>
+                    </div>
+                    <button onClick={handleLogout} className="logout-btn" title="Sign out">
+                        <LogOut size={18} />
+                    </button>
+                </div>
+            )}
         </aside>
     );
 };

@@ -3,6 +3,11 @@ import React from 'react';
 import { Sun, Moon, Coffee, Sparkles } from 'lucide-react';
 import './ThemeSwitcher.css';
 
+interface ThemeSwitcherProps {
+    currentTheme: string;
+    onThemeChange: (themeId: string) => void;
+}
+
 const themes = [
     { id: 'dark', name: 'Dark', icon: <Moon size={18} /> },
     { id: 'light', name: 'Light', icon: <Sun size={18} /> },
@@ -10,7 +15,7 @@ const themes = [
     { id: 'tokyo-night', name: 'Tokyo Night', icon: <Sparkles size={18} /> }
 ];
 
-const ThemeSwitcher = ({ currentTheme, onThemeChange }) => {
+const ThemeSwitcher = ({ currentTheme, onThemeChange }: ThemeSwitcherProps) => {
     return (
         <div className="theme-switcher">
             {themes.map((theme) => (

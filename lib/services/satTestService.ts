@@ -161,13 +161,14 @@ export const satTestService = {
     // ============================================
 
     // Create a new test session
-    async createSession(testId: number) {
+    async createSession(testId: number, userId?: string) {
         const sessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
         const session = await prisma.testSession.create({
             data: {
                 sessionId,
                 testId,
+                userId,
                 includeRWModule1: true,
                 includeRWModule2: true,
                 includeMathModule1: true,
@@ -360,10 +361,11 @@ export const satTestService = {
     },
 
     // Get all completed sessions for review
-    async getCompletedSessions() {
+    async getCompletedSessions(userId?: string) {
         const sessions = await prisma.testSession.findMany({
             where: {
-                completedAt: { not: null }
+                completedAt: { not: null },
+                ...(userId && { userId })
             },
             include: {
                 test: true,

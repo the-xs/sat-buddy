@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { satTestService } from '@/lib/services/satTestService';
 
+// Force dynamic rendering - this route requires database access
+export const dynamic = 'force-dynamic';
+
 // GET /api/tests - Get all tests
 export async function GET() {
     try {

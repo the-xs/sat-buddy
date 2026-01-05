@@ -4,7 +4,9 @@ const nextConfig = {
     // output: 'standalone',
 
     // Exclude react-email from bundling to fix Html component conflict
-    serverExternalPackages: ['@react-email/components', '@react-email/render'],
+    experimental: {
+        serverComponentsExternalPackages: ['@react-email/components', '@react-email/render'],
+    },
 
     // Image optimization
     images: {

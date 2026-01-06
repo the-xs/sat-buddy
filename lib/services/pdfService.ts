@@ -17,7 +17,7 @@ const PDF_DIR = path.join(UPLOADS_DIR, 'pdfs');
 const FIGURES_DIR = path.join(UPLOADS_DIR, 'figures');
 
 // In-memory progress storage
-const progressMap = new Map<string, { status: string; progress: number; result?: unknown; timestamp: number }>();
+const progressMap = new Map<string, { status: string; progress: number; result?: unknown; timestamp: number; logs: string[] }>();
 
 interface ModuleConfig {
     section: string;
@@ -58,17 +58,28 @@ interface ParsedData {
 export const pdfService = {
     // Get progress for a specific file
     getProgress(filename: string) {
-        return progressMap.get(filename) || { status: 'starting', progress: 0 };
+        return progressMap.get(filename) || { status: 'starting', progress: 0, logs: [] };
     },
 
     // Update progress for a file
     updateProgress(filename: string, status: string, progress: number, result: unknown = null) {
-        progressMap.set(filename, { status, progress, result, timestamp: Date.now() });
+        const existing = progressMap.get(filename);
+        const logs = existing?.logs || [];
+        progressMap.set(filename, { status, progress, result, timestamp: Date.now(), logs });
         // Clean up old entries (older than 10 minutes)
         for (const [key, value] of progressMap.entries()) {
             if (Date.now() - value.timestamp > 10 * 60 * 1000) {
                 progressMap.delete(key);
             }
+        }
+    },
+
+    // Add a log message
+    addLog(filename: string, message: string) {
+        const existing = progressMap.get(filename);
+        if (existing) {
+            existing.logs.push(`[${new Date().toLocaleTimeString()}] ${message}`);
+            existing.timestamp = Date.now();
         }
     },
 

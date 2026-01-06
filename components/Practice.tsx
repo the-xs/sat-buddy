@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Sparkles, CheckCircle, XCircle, HelpCircle, ArrowRight, Loader2, History, ChevronDown, ChevronUp } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import './Practice.css';
 
 interface QuestionData {
@@ -291,7 +292,7 @@ const Practice = () => {
                         {explanation && (
                             <div className="explanation-box">
                                 <h4>Explanation</h4>
-                                <p>{explanation}</p>
+                                <ReactMarkdown>{explanation}</ReactMarkdown>
                             </div>
                         )}
                     </div>
@@ -368,7 +369,7 @@ const Practice = () => {
                                     {item.explanation && (
                                         <div className="history-explanation">
                                             <strong>Explanation:</strong>
-                                            <p>{item.explanation}</p>
+                                            <ReactMarkdown>{item.explanation}</ReactMarkdown>
                                         </div>
                                     )}
                                 </div>

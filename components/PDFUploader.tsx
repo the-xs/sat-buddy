@@ -1,6 +1,6 @@
 'use client';
-import { useState, DragEvent, ChangeEvent } from 'react';
-import { Upload, FileText, CheckCircle, XCircle, Loader } from 'lucide-react';
+import { useState, useEffect, useRef, DragEvent, ChangeEvent } from 'react';
+import { Upload, FileText, CheckCircle, XCircle, Loader, Terminal } from 'lucide-react';
 import './PDFUploader.css';
 
 interface PDFUploaderProps {
@@ -10,16 +10,72 @@ interface PDFUploaderProps {
 interface ProgressState {
     status: string;
     progress: number;
+    logs: string[];
+    result?: unknown;
 }
 
 const PDFUploader = ({ onUploadComplete }: PDFUploaderProps) => {
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
-    const [progress, setProgress] = useState<ProgressState>({ status: '', progress: 0 });
+    const [fileId, setFileId] = useState<string | null>(null);
+    const [progress, setProgress] = useState<ProgressState>({ status: '', progress: 0, logs: [] });
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [dragActive, setDragActive] = useState(false);
-    const [uploadResult, setUploadResult] = useState<unknown>(null);
+    const [showConsole, setShowConsole] = useState(false);
+    const consoleRef = useRef<HTMLDivElement>(null);
+
+    // Poll for progress when uploading
+    useEffect(() => {
+        if (!fileId || !uploading) return;
+
+        const pollInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/api/upload?file=${encodeURIComponent(fileId)}`);
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    setProgress({
+                        status: data.data.status,
+                        progress: data.data.progress,
+                        logs: data.data.logs || [],
+                        result: data.data.result
+                    });
+
+                    // Check if complete
+                    if (data.data.progress === 100) {
+                        clearInterval(pollInterval);
+                        setUploading(false);
+                        setSuccess(true);
+
+                        setTimeout(() => {
+                            if (onUploadComplete && data.data.result) {
+                                onUploadComplete(data.data.result);
+                            }
+                        }, 1500);
+                    }
+
+                    // Check if error
+                    if (data.data.progress === -1) {
+                        clearInterval(pollInterval);
+                        setError(data.data.status || 'Processing failed');
+                        setUploading(false);
+                    }
+                }
+            } catch (err) {
+                console.error('Error polling progress:', err);
+            }
+        }, 1000);
+
+        return () => clearInterval(pollInterval);
+    }, [fileId, uploading, onUploadComplete]);
+
+    // Auto-scroll console to bottom
+    useEffect(() => {
+        if (consoleRef.current) {
+            consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+        }
+    }, [progress.logs]);
 
     const handleDrag = (e: DragEvent<HTMLDivElement>) => {
         e.preventDefault();
@@ -68,7 +124,8 @@ const PDFUploader = ({ onUploadComplete }: PDFUploaderProps) => {
         setUploading(true);
         setError('');
         setSuccess(false);
-        setProgress({ status: 'Uploading and processing PDF...', progress: 10 });
+        setShowConsole(true);
+        setProgress({ status: 'Uploading...', progress: 5, logs: [] });
 
         try {
             const formData = new FormData();
@@ -80,15 +137,13 @@ const PDFUploader = ({ onUploadComplete }: PDFUploaderProps) => {
             });
             const result = await response.json();
 
-            if (result.success) {
-                setProgress({ status: 'Complete!', progress: 100 });
-                setUploading(false);
-                setSuccess(true);
-                setUploadResult(result.data);
-
-                setTimeout(() => {
-                    if (onUploadComplete) onUploadComplete(result.data);
-                }, 1500);
+            if (result.success && result.fileId) {
+                setFileId(result.fileId);
+                setProgress(prev => ({
+                    ...prev,
+                    status: 'Processing started...',
+                    progress: 10
+                }));
             } else {
                 throw new Error(result.error || 'Upload failed');
             }
@@ -101,10 +156,11 @@ const PDFUploader = ({ onUploadComplete }: PDFUploaderProps) => {
 
     const resetUpload = () => {
         setFile(null);
+        setFileId(null);
         setError('');
         setSuccess(false);
-        setProgress({ status: '', progress: 0 });
-        setUploadResult(null);
+        setShowConsole(false);
+        setProgress({ status: '', progress: 0, logs: [] });
     };
 
     return (
@@ -150,7 +206,7 @@ const PDFUploader = ({ onUploadComplete }: PDFUploaderProps) => {
                 )}
             </div>
 
-            {uploading && (
+            {(uploading || showConsole) && (
                 <div className="progress-container">
                     <div className="progress-bar-wrapper">
                         <div
@@ -160,10 +216,25 @@ const PDFUploader = ({ onUploadComplete }: PDFUploaderProps) => {
                     </div>
                     <div className="progress-info">
                         <div className="progress-status">
-                            <Loader className="spinner" size={14} />
+                            {uploading && <Loader className="spinner" size={14} />}
+                            {success && <CheckCircle size={14} className="text-success" />}
                             <span>{progress.status}</span>
                         </div>
-                        <span className="progress-percentage">{progress.progress}%</span>
+                        <span className="progress-percentage">{Math.max(0, progress.progress)}%</span>
+                    </div>
+                </div>
+            )}
+
+            {showConsole && progress.logs.length > 0 && (
+                <div className="console-container">
+                    <div className="console-header">
+                        <Terminal size={14} />
+                        <span>Processing Log</span>
+                    </div>
+                    <div className="console-output" ref={consoleRef}>
+                        {progress.logs.map((log, index) => (
+                            <div key={index} className="console-line">{log}</div>
+                        ))}
                     </div>
                 </div>
             )}

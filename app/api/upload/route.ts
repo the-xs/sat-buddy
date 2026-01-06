@@ -3,7 +3,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { pdfService } from '@/lib/services/pdfService';
 
-// POST /api/upload - Upload and parse PDF
+// POST /api/upload - Upload and parse PDF (async)
 export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();
@@ -23,16 +23,23 @@ export async function POST(request: NextRequest) {
         // Save file temporarily
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
-        const tempPath = path.join(tempDir, `${Date.now()}-${file.name}`);
+        const fileId = `${Date.now()}-${file.name}`;
+        const tempPath = path.join(tempDir, fileId);
         await writeFile(tempPath, buffer);
 
-        // Start parsing (returns immediately, parsing happens in background)
-        const result = await pdfService.parsePDF(tempPath, file.name);
+        // Initialize progress tracking
+        pdfService.updateProgress(fileId, 'Starting...', 0);
 
+        // Start parsing in background (don't await)
+        pdfService.parsePDF(tempPath, file.name).catch(error => {
+            console.error('Background PDF parsing error:', error);
+        });
+
+        // Return immediately with file ID for polling
         return NextResponse.json({
             success: true,
-            data: result,
-            message: 'PDF parsed successfully'
+            fileId: fileId,
+            message: 'Upload started, poll for progress'
         });
     } catch (error) {
         console.error('Error uploading PDF:', error);
@@ -43,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// GET /api/upload?file=filename - Get upload progress
+// GET /api/upload?file=filename - Get upload progress and logs
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
@@ -57,7 +64,15 @@ export async function GET(request: NextRequest) {
         }
 
         const progress = pdfService.getProgress(filename);
-        return NextResponse.json({ success: true, data: progress });
+        return NextResponse.json({
+            success: true,
+            data: {
+                status: progress.status,
+                progress: progress.progress,
+                logs: progress.logs || [],
+                result: progress.result
+            }
+        });
     } catch (error) {
         console.error('Error getting progress:', error);
         return NextResponse.json(

@@ -3,9 +3,16 @@ const nextConfig = {
     // Enable static exports if needed for deployment
     // output: 'standalone',
 
-    // Exclude react-email from bundling to fix Html component conflict
+    // Exclude native/problematic modules from bundling
     experimental: {
-        serverComponentsExternalPackages: ['@react-email/components', '@react-email/render'],
+        serverComponentsExternalPackages: [
+            '@react-email/components',
+            '@react-email/render',
+            'pdf-to-img',
+            'canvas',
+            'sharp',
+            'pdfjs-dist',
+        ],
     },
 
     // Image optimization

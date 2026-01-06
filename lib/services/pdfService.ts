@@ -3,6 +3,7 @@ import path from 'path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import prisma from '@/lib/prisma';
+import sharp from 'sharp';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -34,6 +35,7 @@ interface ParsedQuestion {
     figureDescription?: string;
     pageNumber?: number;
     boundingBox?: number[];
+    figureData?: string; // Base64-encoded PNG
     optionA?: string;
     optionB?: string;
     optionC?: string;
@@ -149,6 +151,10 @@ export const pdfService = {
             await fileManager.deleteFile(uploadResult.file.name);
             console.log('🗑️  Cleaned up Gemini file');
 
+            // Extract figures from PDF
+            this.updateProgress(fileId, 'Extracting figures...', 80);
+            await this.extractFiguresFromPdf(fileId, permanentPath, extractedModules);
+
             // Store in database
             this.updateProgress(fileId, 'Saving to database...', 95);
             const satTest = await this.storeInDatabase(parsedData, pdfFilename, originalName);
@@ -245,6 +251,93 @@ Return ONLY valid JSON. No conversational text.`;
         }
     },
 
+    // Extract figures from PDF and add base64 data to questions
+    async extractFiguresFromPdf(fileId: string, pdfPath: string, modules: ParsedModule[]) {
+        try {
+            // Collect all questions with figures
+            const questionsWithFigures: { question: ParsedQuestion; moduleIndex: number; questionIndex: number }[] = [];
+
+            modules.forEach((module, moduleIndex) => {
+                module.questions.forEach((question, questionIndex) => {
+                    if (question.hasFigure && question.pageNumber && question.boundingBox?.length === 4) {
+                        questionsWithFigures.push({ question, moduleIndex, questionIndex });
+                    }
+                });
+            });
+
+            if (questionsWithFigures.length === 0) {
+                console.log('   ℹ️  No figures to extract');
+                return;
+            }
+
+            console.log(`   📊 Extracting ${questionsWithFigures.length} figures from PDF...`);
+
+            // Get unique page numbers needed
+            const pageNumbers = [...new Set(questionsWithFigures.map(q => q.question.pageNumber!))];
+            const pageImages: Map<number, Buffer> = new Map();
+
+            // Use pdf-to-img to render PDF pages
+            const { pdf } = await import('pdf-to-img');
+            const pdfBuffer = await fs.readFile(pdfPath);
+            const document = await pdf(pdfBuffer, { scale: 2.0 });
+
+            let currentPage = 0;
+            const maxPage = Math.max(...pageNumbers);
+
+            for await (const image of document) {
+                currentPage++;
+                if (pageNumbers.includes(currentPage)) {
+                    pageImages.set(currentPage, Buffer.from(image));
+                    console.log(`      📄 Rendered page ${currentPage}`);
+                }
+                if (pageImages.size === pageNumbers.length || currentPage >= maxPage) {
+                    break;
+                }
+            }
+
+            // Process each question with a figure
+            for (const { question, moduleIndex, questionIndex } of questionsWithFigures) {
+                try {
+                    const pageImage = pageImages.get(question.pageNumber!);
+                    if (!pageImage) continue;
+
+                    const boundingBox = question.boundingBox!;
+                    const metadata = await sharp(pageImage).metadata();
+                    const imageWidth = metadata.width || 1;
+                    const imageHeight = metadata.height || 1;
+
+                    // Calculate crop coordinates from normalized bounding box (0-1000)
+                    const [ymin, xmin, ymax, xmax] = boundingBox;
+                    const cropX = Math.max(0, Math.round((xmin / 1000) * imageWidth));
+                    const cropY = Math.max(0, Math.round((ymin / 1000) * imageHeight));
+                    const cropWidth = Math.max(1, Math.round(((xmax - xmin) / 1000) * imageWidth));
+                    const cropHeight = Math.max(1, Math.round(((ymax - ymin) / 1000) * imageHeight));
+
+                    const croppedBuffer = await sharp(pageImage)
+                        .extract({
+                            left: Math.min(cropX, imageWidth - 1),
+                            top: Math.min(cropY, imageHeight - 1),
+                            width: Math.min(cropWidth, imageWidth - cropX),
+                            height: Math.min(cropHeight, imageHeight - cropY)
+                        })
+                        .png()
+                        .toBuffer();
+
+                    // Store base64 data in the question
+                    modules[moduleIndex].questions[questionIndex].figureData = croppedBuffer.toString('base64');
+                    console.log(`      ✅ Extracted figure for Q${question.questionNumber}`);
+                } catch (err) {
+                    console.error(`      ❌ Error extracting figure for Q${question.questionNumber}:`, err);
+                }
+            }
+
+            console.log('   ✅ Figure extraction complete');
+        } catch (error) {
+            console.error('Error extracting figures from PDF:', error);
+            // Don't throw - figures are optional
+        }
+    },
+
     // Store parsed data in database
     async storeInDatabase(parsedData: ParsedData, pdfFilename: string, originalName: string) {
         console.log('💾 Storing in database...');
@@ -267,6 +360,7 @@ Return ONLY valid JSON. No conversational text.`;
                                 figurePageNumber: q.pageNumber || null,
                                 figureBoundingBox: q.boundingBox ? JSON.stringify(q.boundingBox) : null,
                                 figureCaption: q.figureDescription || null,
+                                figureData: q.figureData || null,
                                 optionA: q.optionA || null,
                                 optionB: q.optionB || null,
                                 optionC: q.optionC || null,

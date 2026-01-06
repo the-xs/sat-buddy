@@ -2,10 +2,16 @@
 import prisma from '../lib/prisma';
 import { PrismaClient } from '@prisma/client';
 
-const REMOTE_URL = "mysql://admin:MJqCT7ZyCq0TmkjDVvTM@sat-buddy-db.cwhqmaqqmuyq.us-east-1.rds.amazonaws.com:3306/sat_buddy";
+// Set REMOTE_DATABASE_URL environment variable before running
+const REMOTE_URL = process.env.REMOTE_DATABASE_URL;
 
 async function migrateData() {
     console.log('🔄 Starting data migration...');
+
+    if (!REMOTE_URL) {
+        console.error('❌ REMOTE_DATABASE_URL environment variable is not set');
+        process.exit(1);
+    }
 
     // Create remote prisma client
     const remoteDb = new PrismaClient({

@@ -16,6 +16,7 @@ dist-ssr
 ! .env.example
 backend/uploads
 public/uploads
+scripts/migrate-data.ts
 **/node_modules
 
 # Editor directories and files

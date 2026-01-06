@@ -58,7 +58,7 @@ interface ParsedData {
 export const pdfService = {
     // Get progress for a specific file
     getProgress(filename: string) {
-        return progressMap.get(filename) || { status: 'starting', progress: 0, logs: [] };
+        return progressMap.get(filename) || { status: 'starting', progress: 0, logs: [], result: null };
     },
 
     // Update progress for a file

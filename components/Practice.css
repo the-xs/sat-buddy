@@ -280,6 +280,7 @@
     margin: 0;
     color: var(--color-text-secondary);
     line-height: 1.6;
+    white-space: pre-wrap;
 }
 
 @media (max-width: 640px) {

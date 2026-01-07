@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { CheckCircle, XCircle, Award, TrendingUp } from 'lucide-react';
 import QuestionCard from './QuestionCard';
+import { LaTeXText } from './LaTeXRenderer';
 import './TestResults.css';
 
 interface ResultItem {
@@ -114,21 +115,21 @@ const TestResults = ({ sessionData, onReturnHome }: TestResultsProps) => {
                             </div>
 
                             <div className="result-question">
-                                <p>{result.questionText}</p>
+                                <p><LaTeXText text={result.questionText} /></p>
                             </div>
 
                             <div className="result-answers">
                                 <div className="answer-row">
                                     <span className="answer-label">Your Answer:</span>
                                     <span className={`answer-value ${result.isCorrect ? 'correct' : 'incorrect'}`}>
-                                        {result.userAnswer || 'Not answered'}
+                                        <LaTeXText text={result.userAnswer || 'Not answered'} />
                                     </span>
                                 </div>
                                 {!result.isCorrect && (
                                     <div className="answer-row">
                                         <span className="answer-label">Correct Answer:</span>
                                         <span className="answer-value correct">
-                                            {result.correctAnswer}
+                                            <LaTeXText text={result.correctAnswer} />
                                         </span>
                                     </div>
                                 )}
@@ -154,7 +155,7 @@ const TestResults = ({ sessionData, onReturnHome }: TestResultsProps) => {
                                                     }`}
                                             >
                                                 <span className="option-letter">{option}</span>
-                                                <span className="option-text">{getOptionText(result.options, option)}</span>
+                                                <span className="option-text"><LaTeXText text={getOptionText(result.options, option)} /></span>
                                                 {option === result.correctAnswer && (
                                                     <CheckCircle size={20} className="check-icon" />
                                                 )}
@@ -168,7 +169,7 @@ const TestResults = ({ sessionData, onReturnHome }: TestResultsProps) => {
                                     {result.explanation && (
                                         <div className="explanation-text">
                                             <p><strong>Explanation:</strong></p>
-                                            <p>{result.explanation}</p>
+                                            <p><LaTeXText text={result.explanation} /></p>
                                         </div>
                                     )}
 

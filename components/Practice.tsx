@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Sparkles, CheckCircle, XCircle, HelpCircle, ArrowRight, Loader2, History, ChevronDown, ChevronUp } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { LaTeXText, LaTeXMarkdown } from './LaTeXRenderer';
 import './Practice.css';
 
 interface QuestionData {
@@ -187,10 +187,10 @@ const Practice = () => {
                         <div className="question-text">
                             {question.passage && (
                                 <div className="question-passage">
-                                    <p>{question.passage}</p>
+                                    <p><LaTeXText text={question.passage} /></p>
                                 </div>
                             )}
-                            <p className="question-prompt">{question.question}</p>
+                            <p className="question-prompt"><LaTeXText text={question.question} /></p>
                         </div>
 
                         {/* Options */}
@@ -205,7 +205,7 @@ const Practice = () => {
                                         disabled={!!result}
                                     >
                                         <span className="option-letter">{String.fromCharCode(65 + index)}</span>
-                                        <span className="option-text">{option}</span>
+                                        <span className="option-text"><LaTeXText text={option} /></span>
                                     </button>
                                 ))}
                             </div>
@@ -282,7 +282,7 @@ const Practice = () => {
                                 ) : (
                                     <>
                                         <XCircle size={24} />
-                                        <span>Incorrect. The correct answer is: {result.correctAnswer}</span>
+                                        <span>Incorrect. The correct answer is: <LaTeXText text={result.correctAnswer} /></span>
                                     </>
                                 )}
                             </div>
@@ -292,7 +292,7 @@ const Practice = () => {
                         {explanation && (
                             <div className="explanation-box">
                                 <h4>Explanation</h4>
-                                <ReactMarkdown>{explanation}</ReactMarkdown>
+                                <LaTeXMarkdown>{explanation}</LaTeXMarkdown>
                             </div>
                         )}
                     </div>
@@ -339,14 +339,14 @@ const Practice = () => {
                                     {expandedId === item.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                                 </button>
                             </div>
-                            <p className="history-question">{item.questionText}</p>
+                            <p className="history-question"><LaTeXText text={item.questionText} /></p>
 
                             {expandedId === item.id && (
                                 <div className="history-details">
                                     {item.passage && (
                                         <div className="history-passage">
                                             <strong>Passage:</strong>
-                                            <p>{item.passage}</p>
+                                            <p><LaTeXText text={item.passage} /></p>
                                         </div>
                                     )}
                                     <div className="history-options">
@@ -356,20 +356,20 @@ const Practice = () => {
                                                 className={`history-option ${option === item.correctAnswer ? 'correct' : ''} ${option === item.userAnswer && option !== item.correctAnswer ? 'incorrect' : ''}`}
                                             >
                                                 <span className="option-letter">{String.fromCharCode(65 + idx)}</span>
-                                                <span>{option}</span>
+                                                <span><LaTeXText text={option} /></span>
                                                 {option === item.correctAnswer && <CheckCircle size={16} />}
                                                 {option === item.userAnswer && option !== item.correctAnswer && <XCircle size={16} />}
                                             </div>
                                         ))}
                                     </div>
                                     <div className="history-answer-info">
-                                        <p><strong>Your Answer:</strong> {item.userAnswer}</p>
-                                        <p><strong>Correct Answer:</strong> {item.correctAnswer}</p>
+                                        <p><strong>Your Answer:</strong> <LaTeXText text={item.userAnswer} /></p>
+                                        <p><strong>Correct Answer:</strong> <LaTeXText text={item.correctAnswer} /></p>
                                     </div>
                                     {item.explanation && (
                                         <div className="history-explanation">
                                             <strong>Explanation:</strong>
-                                            <ReactMarkdown>{item.explanation}</ReactMarkdown>
+                                            <LaTeXMarkdown>{item.explanation}</LaTeXMarkdown>
                                         </div>
                                     )}
                                 </div>

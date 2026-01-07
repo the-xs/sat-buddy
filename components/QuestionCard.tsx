@@ -1,8 +1,136 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 import './QuestionCard.css';
 
-// Format text with underlines, bold, italic, and preserve whitespace
+// Render LaTeX string to HTML
+function renderLatex(latex: string, displayMode: boolean = false): string {
+    try {
+        return katex.renderToString(latex, {
+            throwOnError: false,
+            displayMode,
+            strict: false
+        });
+    } catch {
+        return latex;
+    }
+}
+
+// Extract a complete LaTeX expression starting from a command
+function extractLatexExpression(text: string, startIndex: number): { expr: string; endIndex: number } {
+    let i = startIndex;
+    let braceDepth = 0;
+    let inBraces = false;
+
+    // Skip the backslash and command name
+    while (i < text.length && /[a-zA-Z]/.test(text[i])) {
+        i++;
+    }
+
+    // Now consume any braced arguments and subscripts/superscripts
+    while (i < text.length) {
+        const char = text[i];
+
+        if (char === '{') {
+            braceDepth++;
+            inBraces = true;
+            i++;
+        } else if (char === '}') {
+            braceDepth--;
+            i++;
+            if (braceDepth === 0) {
+                // Check if there's another argument or operator following
+                const next = text[i];
+                if (next !== '{' && next !== '^' && next !== '_') {
+                    // Include trailing variable/number if part of expression
+                    while (i < text.length && /[a-zA-Z0-9]/.test(text[i])) {
+                        i++;
+                    }
+                    break;
+                }
+            }
+        } else if (braceDepth === 0 && !inBraces) {
+            // Not inside braces, check for subscript/superscript
+            if (char === '^' || char === '_') {
+                i++;
+                if (text[i] === '{') {
+                    // Will be handled in next iteration
+                } else {
+                    // Single character subscript/superscript
+                    i++;
+                }
+            } else {
+                break;
+            }
+        } else {
+            i++;
+        }
+    }
+
+    return { expr: text.slice(startIndex, i), endIndex: i };
+}
+
+// Parse text and render LaTeX expressions
+function LaTeXText({ text }: { text: string }) {
+    const html = useMemo(() => {
+        if (!text) return '';
+
+        // Replace display math $$...$$ first
+        let result = text.replace(/\$\$([\s\S]*?)\$\$/g, (_, latex) => {
+            return renderLatex(latex.trim(), true);
+        });
+
+        // Replace inline math $...$
+        result = result.replace(/\$([^$]+)\$/g, (_, latex) => {
+            return renderLatex(latex.trim(), false);
+        });
+
+        // Replace \[...\] display math
+        result = result.replace(/\\\[([\s\S]*?)\\\]/g, (_, latex) => {
+            return renderLatex(latex.trim(), true);
+        });
+
+        // Replace \(...\) inline math
+        result = result.replace(/\\\(([\s\S]*?)\\\)/g, (_, latex) => {
+            return renderLatex(latex.trim(), false);
+        });
+
+        // Find and replace LaTeX commands without delimiters (like \frac{}{}, \sqrt{})
+        const latexCommandPattern = /\\(frac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|exp|overline|underline|text|mathrm|mathbf)/g;
+        let match;
+        const replacements: { start: number; end: number; replacement: string }[] = [];
+
+        while ((match = latexCommandPattern.exec(result)) !== null) {
+            const { expr, endIndex } = extractLatexExpression(result, match.index + 1);
+            const fullExpr = '\\' + expr;
+            if (fullExpr.includes('{')) {
+                replacements.push({
+                    start: match.index,
+                    end: match.index + 1 + endIndex - (match.index + 1),
+                    replacement: renderLatex(fullExpr, false)
+                });
+            }
+        }
+
+        // Apply replacements in reverse order to preserve indices
+        for (let i = replacements.length - 1; i >= 0; i--) {
+            const { start, end, replacement } = replacements[i];
+            result = result.slice(0, start) + replacement + result.slice(end);
+        }
+
+        // Replace standalone Greek letters and symbols
+        result = result.replace(/\\(pi|theta|alpha|beta|gamma|delta|infty|pm|times|div|cdot|leq|geq|neq|approx|equiv|degree)(?![a-zA-Z])/g, (match) => {
+            return renderLatex(match, false);
+        });
+
+        return result;
+    }, [text]);
+
+    return <span dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+// Format text with underlines, bold, italic, LaTeX, and preserve whitespace
 function FormattedText({ text }: { text: string }) {
     const elements = useMemo(() => {
         if (!text) return null;
@@ -51,14 +179,14 @@ function FormattedText({ text }: { text: string }) {
             break;
         }
 
-        // Now render segments, handling newlines within each segment
+        // Now render segments, handling newlines and LaTeX within each segment
         return segments.map((segment, segIndex) => {
             const renderContent = (content: string) => {
                 // Split by newlines and render with <br /> tags
                 const lines = content.split('\n');
                 return lines.map((line, i) => (
                     <span key={i}>
-                        {line}
+                        <LaTeXText text={line} />
                         {i < lines.length - 1 && <br />}
                     </span>
                 ));
@@ -219,7 +347,7 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
                             disabled={showCorrectAnswer}
                         >
                             <span className="option-letter">{option}</span>
-                            <span className="option-text">{question.options?.[index]}</span>
+                            <span className="option-text"><FormattedText text={question.options?.[index] || ''} /></span>
                         </button>
                     ))}
                 </div>

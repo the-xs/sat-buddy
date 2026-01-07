@@ -37,20 +37,28 @@ export const practiceService = {
 5. Assign a standard SAT topic (e.g., "Heart of Algebra", "Problem Solving and Data Analysis", "Passport to Advanced Math", "Information and Ideas", "Rhetoric", "Standard English Conventions")
 6. Assign a difficulty level ("Easy", "Medium", "Hard")
 
+**MATH FORMATTING - Use LaTeX for ALL math expressions:**
+- Wrap math expressions in $ delimiters: $x^2 + 5$
+- Fractions: $\\frac{numerator}{denominator}$
+- Exponents: $x^{2}$ or $x^{n}$
+- Square roots: $\\sqrt{x}$
+- Greek letters: $\\pi$, $\\theta$
+- Inequalities: $\\leq$, $\\geq$, $\\neq$
+
 **OUTPUT FORMAT - Return valid JSON only:**
 {
     "category": "Math" or "Reading" or "Writing",
     "topic": "Standard SAT Topic",
     "difficulty": "Easy" or "Medium" or "Hard",
     "passage": "optional passage text" or null,
-    "question": "the question text",
+    "question": "the question text (use $LaTeX$ for math)",
     "options": ["option A", "option B", "option C", "option D"],
     "correctAnswer": "the exact text of the correct option",
     "correctLetter": "A" or "B" or "C" or "D",
-    "explanation": "brief explanation of why this is correct"
+    "explanation": "brief explanation (use $LaTeX$ for any math)"
 }
 
-Return ONLY valid JSON. No markdown, no conversation.`;
+Return ONLY valid JSON. No markdown code fences, no conversation.`;
 
         const result = await model.generateContent(prompt);
         const responseText = result.response.text().trim();
@@ -133,6 +141,9 @@ Provide a clear, educational explanation:
 1. Why the correct answer is right
 2. Why each wrong answer is incorrect
 3. Any tips or strategies for similar questions
+
+**IMPORTANT**: Use LaTeX syntax for ALL math expressions by wrapping them in $ delimiters.
+Example: $\\frac{x+1}{2}$, $x^2$, $\\sqrt{x}$
 
 Be concise but thorough. Write in a friendly, encouraging tone.`;
 

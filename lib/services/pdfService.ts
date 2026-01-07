@@ -197,6 +197,14 @@ Extract EVERY question for this specific module.
 - Mark bold text with **bold** markdown
 - Mark italic text with *italic* markdown
 - For Reading/Writing questions: include the full passage with its introduction (e.g., "The following text is from...") in questionText, preserving all formatting
+- **MATH EXPRESSIONS**: Use LaTeX syntax wrapped in $ delimiters for ALL mathematical expressions:
+  - Fractions: $\\frac{numerator}{denominator}$ (e.g., $\\frac{x+1}{2}$)
+  - Exponents: $x^{2}$ or $x^{n}$
+  - Square roots: $\\sqrt{x}$ or $\\sqrt[n]{x}$
+  - Greek letters: $\\pi$, $\\theta$, $\\alpha$
+  - Inequalities: $\\leq$, $\\geq$, $\\neq$
+  - Multiplication: $\\times$ or $\\cdot$
+  - Keep simple variables like x, y, n without $ delimiters unless in a formula
 
 **EXTRACTION FIELDS:**
 1. **Question Number**: The number of the question within this module.
@@ -264,7 +272,56 @@ Return ONLY valid JSON. No conversational text.`;
                 jsonText = jsonText.replace(/```\n?/g, '').replace(/```\n?$/g, '');
             }
 
-            return JSON.parse(jsonText);
+            // Robust JSON Pre-processing:
+            // We use a regex to identify and preserve VALID JSON escape sequences:
+            // - \\ (escaped backslash)
+            // - \" (escaped quote)
+            // - \/ (escaped forward slash, common in JSON)
+            // - \b, \f, \n, \r, \t (standard control chars)
+            // - \uXXXX (valid unicode)
+            //
+            // EVERYTHING ELSE starting with \ is treated as an unescaped LaTeX command (e.g., \alpha, \leq) 
+            // and we manually escape the backslash to \\ so it becomes a literal backslash in the string.
+            jsonText = jsonText.replace(/(\\\\|\\"|\\\/|\\b|\\f|\\n|\\r|\\t|\\u[0-9a-fA-F]{4})|(\\)/g, (match, preserved, lone) => {
+                if (preserved) return preserved;
+                return '\\\\';
+            });
+
+            // Handle specific edge case: \neq (newline + eq) 
+            // The above regex preserves \n. If we have "\neq", it matches \n then "eq".
+            // So "\neq" becomes "\neq" (newline char + eq). 
+            // This is actually syntactically VALID JSON (string with newline), but semantically wrong for LaTeX.
+            // We want "\\neq". 
+            // So we still need a specific fix for \n-based LaTeX commands if they exist.
+            // LaTeX commands starting with n: \neq, \nu, \natural, \neg...
+            // Be careful not to break actual newlines.
+            // Heuristic: If \n is followed by alphanumeric chars that look like a command, escape it.
+            // Actually, simpler: Just fix \neq explicitly as it's the most common collision.
+            jsonText = jsonText.replace(/\neq/g, '\\\\neq');
+
+            console.log(`📝 JSON Debug: Length ${jsonText.length}, First 50 chars: ${jsonText.substring(0, 50)}`);
+
+            try {
+                return JSON.parse(jsonText);
+            } catch (e) {
+                const parseError = e as Error;
+                console.error(`❌ JSON Parse Error for ${config.promptSuffix}: ${parseError.message}`);
+
+                // Try to extract position from error message to show relevant context
+                const match = parseError.message.match(/at position (\d+)/);
+                if (match) {
+                    const pos = parseInt(match[1]);
+                    const start = Math.max(0, pos - 100);
+                    const end = Math.min(jsonText.length, pos + 100);
+                    console.error(`💥 Context around position ${pos}:\n...${jsonText.substring(start, end)}...`);
+                    console.error(`💥 Character at failure: '${jsonText.charAt(pos)}' (Code: ${jsonText.charCodeAt(pos)})`);
+                } else {
+                    console.error(`💥 First 500 chars of failing JSON:\n${jsonText.substring(0, 500)}`);
+                }
+
+                // Return empty questions to prevent app crash, but logged error will help debug
+                return { questions: [] };
+            }
         } catch (error) {
             console.error(`Error extracting ${config.promptSuffix}:`, error);
             return { questions: [] };

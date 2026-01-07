@@ -174,16 +174,48 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
         setCurrentQuestionIndex(index);
     };
 
+    // Get module boundaries for current question
+    const getModuleBounds = useCallback(() => {
+        const current = allQuestions[currentQuestionIndex];
+        if (!current) return { start: 0, end: allQuestions.length };
+
+        let start = 0;
+        let end = allQuestions.length;
+
+        for (let i = 0; i < allQuestions.length; i++) {
+            const q = allQuestions[i];
+            if (q.moduleSection === current.moduleSection && q.moduleNumber === current.moduleNumber) {
+                if (start === 0 || i < start) start = i;
+                end = i + 1;
+            }
+        }
+        return { start, end };
+    }, [allQuestions, currentQuestionIndex]);
+
     const nextQuestion = () => {
-        if (currentQuestionIndex < allQuestions.length - 1) {
+        const { end } = getModuleBounds();
+        // Only allow moving to next question within current module
+        if (currentQuestionIndex < end - 1) {
             setCurrentQuestionIndex(currentQuestionIndex + 1);
         }
     };
 
     const previousQuestion = () => {
-        if (currentQuestionIndex > 0) {
+        const { start } = getModuleBounds();
+        // Only allow moving to previous question within current module
+        if (currentQuestionIndex > start) {
             setCurrentQuestionIndex(currentQuestionIndex - 1);
         }
+    };
+
+    const isFirstInModule = () => {
+        const { start } = getModuleBounds();
+        return currentQuestionIndex === start;
+    };
+
+    const isLastInModule = () => {
+        const { end } = getModuleBounds();
+        return currentQuestionIndex === end - 1;
     };
 
     const submitTest = useCallback(async () => {
@@ -533,14 +565,15 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
             <div className="test-navigation">
                 <button
                     onClick={previousQuestion}
-                    disabled={currentQuestionIndex === 0}
+                    disabled={isFirstInModule()}
                     className="btn btn-secondary"
                 >
                     <ArrowLeft size={20} />
                     Previous
                 </button>
 
-                {currentQuestionIndex === allQuestions.length - 1 ? (
+                {currentModuleIndex === modules.length - 1 && isLastInModule() ? (
+                    // Last question of last module - show Submit
                     <button
                         onClick={submitTest}
                         className="btn btn-success btn-lg"
@@ -558,7 +591,17 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
                             </>
                         )}
                     </button>
+                ) : isLastInModule() ? (
+                    // Last question of current module - show Next Module
+                    <button
+                        onClick={advanceModule}
+                        className="btn btn-primary btn-lg"
+                    >
+                        Next Module
+                        <ArrowRight size={20} />
+                    </button>
                 ) : (
+                    // Regular next question within module
                     <button
                         onClick={nextQuestion}
                         className="btn btn-primary"

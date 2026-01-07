@@ -190,9 +190,18 @@ export const pdfService = {
 **YOUR TASK:**
 Extract EVERY question for this specific module.
 
+**CRITICAL - PRESERVE FORMATTING:**
+- Mark underlined text with <u>underlined text</u> tags
+- Preserve indentation using spaces (e.g., "    indented text" for paragraph indents)
+- Preserve line breaks as they appear in the PDF using \\n
+- Mark bold text with **bold** markdown
+- Mark italic text with *italic* markdown
+- For Reading/Writing questions: include the full passage with its introduction (e.g., "The following text is from...") in questionText, preserving all formatting
+
+**EXTRACTION FIELDS:**
 1. **Question Number**: The number of the question within this module.
 2. **Question Type**: "MultipleChoice" (A, B, C, D) or "FreeResponse" (usually Math).
-3. **Question Text**: Complete text.
+3. **Question Text**: For Reading/Writing - include the passage intro, the full passage text with formatting, AND the actual question. For Math - include the complete problem text.
 4. **Options**: For MultipleChoice, provide A, B, C, D. For FreeResponse, list these as null.
 5. **Correct Answer**: The letter (A, B, C, or D) or the numeric value for FreeResponse.
 6. **Figure Handling**:
@@ -208,7 +217,7 @@ Extract EVERY question for this specific module.
     {
       "questionNumber": 1,
       "questionType": "MultipleChoice" or "FreeResponse",
-      "questionText": "full question text",
+      "questionText": "full question text with passage (if applicable) - PRESERVE ALL FORMATTING including underlines with <u></u> tags, indentation with spaces, and line breaks with \\n",
       "topic": "SAT Topic (e.g., Heart of Algebra, Rhetoric, Standard English Conventions)",
       "difficulty": "Easy", "Medium", or "Hard",
       "hasFigure": true or false,

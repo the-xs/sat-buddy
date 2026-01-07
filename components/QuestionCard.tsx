@@ -1,6 +1,84 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import './QuestionCard.css';
+
+// Format text with underlines, bold, italic, and preserve whitespace
+function FormattedText({ text }: { text: string }) {
+    const elements = useMemo(() => {
+        if (!text) return null;
+
+        // First, tokenize the text into segments
+        type Segment = { type: 'text' | 'underline' | 'bold' | 'italic'; content: string };
+        const segments: Segment[] = [];
+        let remaining = text;
+
+        while (remaining.length > 0) {
+            // Check for <u>...</u> (can span multiple lines)
+            const underlineMatch = remaining.match(/^([\s\S]*?)<u>([\s\S]*?)<\/u>/);
+            if (underlineMatch) {
+                if (underlineMatch[1]) {
+                    segments.push({ type: 'text', content: underlineMatch[1] });
+                }
+                segments.push({ type: 'underline', content: underlineMatch[2] });
+                remaining = remaining.slice(underlineMatch[0].length);
+                continue;
+            }
+
+            // Check for **bold**
+            const boldMatch = remaining.match(/^([\s\S]*?)\*\*([\s\S]*?)\*\*/);
+            if (boldMatch && !remaining.match(/^[\s\S]*?<u>/)) {
+                if (boldMatch[1]) {
+                    segments.push({ type: 'text', content: boldMatch[1] });
+                }
+                segments.push({ type: 'bold', content: boldMatch[2] });
+                remaining = remaining.slice(boldMatch[0].length);
+                continue;
+            }
+
+            // Check for *italic* (single asterisks, not double)
+            const italicMatch = remaining.match(/^([\s\S]*?)(?<!\*)\*([^*]+)\*(?!\*)/);
+            if (italicMatch && !remaining.match(/^[\s\S]*?<u>/) && !remaining.match(/^[\s\S]*?\*\*/)) {
+                if (italicMatch[1]) {
+                    segments.push({ type: 'text', content: italicMatch[1] });
+                }
+                segments.push({ type: 'italic', content: italicMatch[2] });
+                remaining = remaining.slice(italicMatch[0].length);
+                continue;
+            }
+
+            // No more formatting matches, add the rest as text
+            segments.push({ type: 'text', content: remaining });
+            break;
+        }
+
+        // Now render segments, handling newlines within each segment
+        return segments.map((segment, segIndex) => {
+            const renderContent = (content: string) => {
+                // Split by newlines and render with <br /> tags
+                const lines = content.split('\n');
+                return lines.map((line, i) => (
+                    <span key={i}>
+                        {line}
+                        {i < lines.length - 1 && <br />}
+                    </span>
+                ));
+            };
+
+            switch (segment.type) {
+                case 'underline':
+                    return <u key={segIndex}>{renderContent(segment.content)}</u>;
+                case 'bold':
+                    return <strong key={segIndex}>{renderContent(segment.content)}</strong>;
+                case 'italic':
+                    return <em key={segIndex}>{renderContent(segment.content)}</em>;
+                default:
+                    return <span key={segIndex}>{renderContent(segment.content)}</span>;
+            }
+        });
+    }, [text]);
+
+    return <>{elements}</>;
+}
 
 interface QuestionCardProps {
     question: {
@@ -95,7 +173,7 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
             )}
 
             <div className="question-text">
-                <p>{question.questionText}</p>
+                <FormattedText text={question.questionText} />
             </div>
 
             {isFreeResponse ? (

@@ -34,6 +34,11 @@
 
 .question-text {
     margin-bottom: var(--spacing-md);
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--color-text);
+    white-space: pre-wrap; /* Preserve spaces and line breaks */
+    font-family: inherit;
 }
 
 .question-text p {
@@ -41,6 +46,24 @@
     line-height: 1.6;
     color: var(--color-text);
     margin: 0;
+}
+
+.question-text .formatted-line {
+    display: inline;
+}
+
+.question-text u {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 2px;
+}
+
+.question-text em {
+    font-style: italic;
+}
+
+.question-text strong {
+    font-weight: 600;
 }
 
 .options-container {

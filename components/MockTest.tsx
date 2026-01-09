@@ -11,6 +11,31 @@ const MODULE_TIMES: Record<string, number> = {
 };
 const BREAK_TIME = 10 * 60; // 10 minutes
 
+// Get time limit for a module in seconds
+// Uses extracted timeLimit from PDF if available, otherwise falls back to defaults
+const getModuleTimeLimit = (module: Module | undefined): number => {
+    if (!module) return MODULE_TIMES.ReadingWriting; // Default fallback
+
+    // If module has extracted timeLimit (in minutes), convert to seconds
+    if (module.timeLimit && module.timeLimit > 0) {
+        return module.timeLimit * 60;
+    }
+
+    // Fall back to default times based on section
+    return MODULE_TIMES[module.section] || MODULE_TIMES.ReadingWriting;
+};
+
+interface QuestionSet {
+    id: number;
+    orderIndex?: number;
+    passage?: string | null;
+    passageIntro?: string | null;
+    hasFigure?: boolean;
+    figureData?: string | null;
+    figureCaption?: string | null;
+    questions?: Question[];
+}
+
 interface Question {
     id: number;
     questionNumber: number;
@@ -20,17 +45,20 @@ interface Question {
     optionB?: string;
     optionC?: string;
     optionD?: string;
-    hasFigure?: boolean;
+    orderInSet?: number;
     moduleSection?: string;
     moduleNumber?: number;
     moduleId?: number;
+    questionSetId?: number;
+    questionSet?: QuestionSet;
 }
 
 interface Module {
     id: number;
     section: string;
     moduleNumber: number;
-    questions?: Question[];
+    timeLimit?: number | null; // Time limit in minutes from PDF extraction
+    questionSets?: QuestionSet[];
 }
 
 interface TestData {
@@ -77,7 +105,7 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
             if (data.success) {
                 setTestData(data.data);
 
-                // Flatten all questions from all modules in order
+                // Flatten all questions from all modules via questionSets
                 const questions: Question[] = [];
                 const sortedModules = [...data.data.modules].sort((a: Module, b: Module) => {
                     // Sort: ReadingWriting before Math, then by module number
@@ -88,15 +116,33 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
                 });
 
                 sortedModules.forEach((module: Module) => {
-                    const sortedQuestions = [...(module.questions || [])].sort(
-                        (a, b) => a.questionNumber - b.questionNumber
+                    // Sort question sets by orderIndex
+                    const sortedSets = [...(module.questionSets || [])].sort(
+                        (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
                     );
-                    sortedQuestions.forEach(q => {
-                        questions.push({
-                            ...q,
-                            moduleSection: module.section,
-                            moduleNumber: module.moduleNumber,
-                            moduleId: module.id
+
+                    sortedSets.forEach((qs: QuestionSet) => {
+                        // Sort questions within the set
+                        const sortedQuestions = [...(qs.questions || [])].sort(
+                            (a, b) => a.questionNumber - b.questionNumber
+                        );
+
+                        sortedQuestions.forEach(q => {
+                            questions.push({
+                                ...q,
+                                moduleSection: module.section,
+                                moduleNumber: module.moduleNumber,
+                                moduleId: module.id,
+                                questionSetId: qs.id,
+                                questionSet: {
+                                    id: qs.id,
+                                    passage: qs.passage,
+                                    passageIntro: qs.passageIntro,
+                                    hasFigure: qs.hasFigure,
+                                    figureData: qs.figureData,
+                                    figureCaption: qs.figureCaption
+                                }
+                            });
                         });
                     });
                 });
@@ -134,8 +180,7 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
                 setIsOnBreak(false);
                 // Initialize timer for first module
                 if (modules.length > 0) {
-                    const firstModuleSection = modules[0].section;
-                    setTimeRemaining(MODULE_TIMES[firstModuleSection]);
+                    setTimeRemaining(getModuleTimeLimit(modules[0]));
                 }
             } else {
                 setError('Failed to create test session');
@@ -284,7 +329,7 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
             // Same section, move to next module immediately
             setCurrentModuleIndex(nextModuleIdx);
             setCurrentQuestionIndex(getModuleStartIndex(nextModuleIdx));
-            setTimeRemaining(MODULE_TIMES[nextSection]);
+            setTimeRemaining(getModuleTimeLimit(modules[nextModuleIdx]));
         }
     }, [currentModuleIndex, modules, getModuleStartIndex, submitTest]);
 
@@ -295,7 +340,7 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
             setIsOnBreak(false);
             setCurrentModuleIndex(nextModuleIdx);
             setCurrentQuestionIndex(getModuleStartIndex(nextModuleIdx));
-            setTimeRemaining(MODULE_TIMES[modules[nextModuleIdx].section]);
+            setTimeRemaining(getModuleTimeLimit(modules[nextModuleIdx]));
         }
     }, [currentModuleIndex, modules, getModuleStartIndex]);
 
@@ -344,7 +389,7 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
         // If we've moved to a different module, update module index and reset timer
         if (currentQModuleIdx !== -1 && currentQModuleIdx !== currentModuleIndex) {
             setCurrentModuleIndex(currentQModuleIdx);
-            setTimeRemaining(MODULE_TIMES[modules[currentQModuleIdx].section]);
+            setTimeRemaining(getModuleTimeLimit(modules[currentQModuleIdx]));
         }
     }, [currentQuestionIndex, allQuestions, modules, testStarted, isOnBreak, currentModuleIndex]);
 
@@ -427,21 +472,27 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
                                     return a.section === 'ReadingWriting' ? -1 : 1;
                                 }
                                 return a.moduleNumber - b.moduleNumber;
-                            }).map(module => (
-                                <div key={module.id} className="module-item">
-                                    <div className="module-icon">
-                                        {module.section === 'Math' ? <Calculator size={24} /> : <BookOpen size={24} />}
+                            }).map(module => {
+                                // Count questions through questionSets
+                                const questionCount = (module.questionSets || []).reduce(
+                                    (sum, qs) => sum + (qs.questions?.length || 0), 0
+                                );
+                                return (
+                                    <div key={module.id} className="module-item">
+                                        <div className="module-icon">
+                                            {module.section === 'Math' ? <Calculator size={24} /> : <BookOpen size={24} />}
+                                        </div>
+                                        <div className="module-info">
+                                            <span className="module-name">
+                                                {module.section === 'ReadingWriting' ? 'Reading & Writing' : 'Math'} Module {module.moduleNumber}
+                                            </span>
+                                            <span className="module-count">
+                                                {questionCount} questions
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="module-info">
-                                        <span className="module-name">
-                                            {module.section === 'ReadingWriting' ? 'Reading & Writing' : 'Math'} Module {module.moduleNumber}
-                                        </span>
-                                        <span className="module-count">
-                                            {module.questions?.length || 0} questions
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         <div className="test-total">
@@ -538,7 +589,9 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
                     questionNumber={currentQuestion.questionNumber}
                     selectedAnswer={answers[currentQuestion.id]}
                     onAnswerSelect={(answer: string) => handleAnswerSelect(currentQuestion.id, answer)}
-                    figureUrl={currentQuestion.hasFigure ? `/api/tests/figure/${currentQuestion.id}` : undefined}
+                    questionSet={currentQuestion.questionSet}
+                    isFirstInSet={currentQuestion.orderInSet === 0 || currentQuestionIndex === 0 ||
+                        allQuestions[currentQuestionIndex - 1]?.questionSetId !== currentQuestion.questionSetId}
                 />
             </div>
 

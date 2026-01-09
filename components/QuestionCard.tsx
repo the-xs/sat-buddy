@@ -184,12 +184,27 @@ function FormattedText({ text }: { text: string }) {
             const renderContent = (content: string) => {
                 // Split by newlines and render with <br /> tags
                 const lines = content.split('\n');
-                return lines.map((line, i) => (
-                    <span key={i}>
-                        <LaTeXText text={line} />
-                        {i < lines.length - 1 && <br />}
-                    </span>
-                ));
+                return lines.map((line, i) => {
+                    // Check for line numbers at the start of lines (e.g., "5  " or "10  ")
+                    const lineNumberMatch = line.match(/^(\d{1,3})(\s{2,})/);
+                    if (lineNumberMatch) {
+                        const lineNum = lineNumberMatch[1];
+                        const rest = line.slice(lineNumberMatch[0].length);
+                        return (
+                            <span key={i}>
+                                <span className="line-number">{lineNum}</span>
+                                <LaTeXText text={rest} />
+                                {i < lines.length - 1 && <br />}
+                            </span>
+                        );
+                    }
+                    return (
+                        <span key={i}>
+                            <LaTeXText text={line} />
+                            {i < lines.length - 1 && <br />}
+                        </span>
+                    );
+                });
             };
 
             switch (segment.type) {
@@ -208,6 +223,15 @@ function FormattedText({ text }: { text: string }) {
     return <>{elements}</>;
 }
 
+interface QuestionSet {
+    id: number;
+    passage?: string | null;
+    passageIntro?: string | null;
+    hasFigure?: boolean;
+    figureData?: string | null;
+    figureCaption?: string | null;
+}
+
 interface QuestionCardProps {
     question: {
         id: number;
@@ -219,18 +243,22 @@ interface QuestionCardProps {
         optionC?: string;
         optionD?: string;
         options?: (string | undefined)[];
-        figureCaption?: string;
     };
     questionNumber: number;
     selectedAnswer?: string;
     onAnswerSelect: (answer: string) => void;
     showCorrectAnswer?: boolean;
+    // QuestionSet data for passage/figure display
+    questionSet?: QuestionSet | null;
+    isFirstInSet?: boolean; // Whether to show passage/figure (only for first question in set)
+    // Legacy support - figureUrl can still be passed directly
     figureUrl?: string | null;
 }
 
-const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect, showCorrectAnswer = false, figureUrl = null }: QuestionCardProps) => {
+const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect, showCorrectAnswer = false, questionSet = null, isFirstInSet = true, figureUrl = null }: QuestionCardProps) => {
     const options = ['A', 'B', 'C', 'D'];
     const [freeResponseValue, setFreeResponseValue] = useState(selectedAnswer || '');
+    const [figureModalOpen, setFigureModalOpen] = useState(false);
 
     // Sync local state when selectedAnswer changes (e.g., navigating between questions)
     useEffect(() => {
@@ -239,6 +267,14 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
 
     // Check if this is a free response question
     const isFreeResponse = question.questionType === 'FreeResponse';
+
+    // Determine figure URL - prefer questionSet figure, fall back to legacy figureUrl
+    const effectiveFigureUrl = useMemo(() => {
+        if (isFirstInSet && questionSet?.hasFigure && questionSet?.figureData) {
+            return `data:image/png;base64,${questionSet.figureData}`;
+        }
+        return figureUrl;
+    }, [isFirstInSet, questionSet, figureUrl]);
 
     const getOptionClass = (option: string) => {
         const classes = ['option'];
@@ -287,15 +323,45 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
                 {isFreeResponse && <span className="question-type-badge">Free Response</span>}
             </div>
 
-            {figureUrl && (
+            {/* Show passage intro and passage for first question in set */}
+            {isFirstInSet && questionSet?.passage && (
+                <div className="passage-container">
+                    {questionSet.passageIntro && (
+                        <div className="passage-intro">
+                            <FormattedText text={questionSet.passageIntro} />
+                        </div>
+                    )}
+                    <div className="passage-text">
+                        <FormattedText text={questionSet.passage} />
+                    </div>
+                </div>
+            )}
+
+            {/* Show figure for first question in set or from legacy figureUrl */}
+            {effectiveFigureUrl && (
                 <div className="question-figure-container">
                     <img
-                        src={figureUrl}
-                        alt={question.figureCaption || 'Question figure'}
+                        src={effectiveFigureUrl}
+                        alt={questionSet?.figureCaption || 'Question figure'}
                         className="question-figure"
+                        onClick={() => setFigureModalOpen(true)}
+                        title="Click to enlarge"
                         onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';
                         }}
+                    />
+                </div>
+            )}
+
+            {/* Fullscreen figure modal */}
+            {figureModalOpen && effectiveFigureUrl && (
+                <div
+                    className="figure-modal-overlay"
+                    onClick={() => setFigureModalOpen(false)}
+                >
+                    <img
+                        src={effectiveFigureUrl}
+                        alt={questionSet?.figureCaption || 'Question figure'}
                     />
                 </div>
             )}

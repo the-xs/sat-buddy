@@ -5,6 +5,15 @@ import QuestionCard from './QuestionCard';
 import { LaTeXText } from './LaTeXRenderer';
 import './TestResults.css';
 
+interface QuestionSet {
+    id: number;
+    passage?: string | null;
+    passageIntro?: string | null;
+    hasFigure?: boolean;
+    figureData?: string | null;
+    figureCaption?: string | null;
+}
+
 interface ResultItem {
     questionNumber: number;
     moduleSection: string;
@@ -15,6 +24,7 @@ interface ResultItem {
     correctAnswer: string;
     options?: Record<string, string> | string[];
     explanation?: string;
+    questionSet?: QuestionSet;
 }
 
 interface SessionData {
@@ -145,6 +155,29 @@ const TestResults = ({ sessionData, onReturnHome }: TestResultsProps) => {
                             {expandedQuestion === index && (
                                 <div className="explanation-panel">
                                     <h4>Detailed Explanation</h4>
+
+                                    {/* Show passage if available */}
+                                    {result.questionSet?.passage && (
+                                        <div className="passage-review">
+                                            {result.questionSet.passageIntro && (
+                                                <p className="passage-intro"><em><LaTeXText text={result.questionSet.passageIntro} /></em></p>
+                                            )}
+                                            <div className="passage-text">
+                                                <LaTeXText text={result.questionSet.passage} />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Show figure if available */}
+                                    {result.questionSet?.hasFigure && result.questionSet?.figureData && (
+                                        <div className="figure-review">
+                                            <img
+                                                src={`data:image/png;base64,${result.questionSet.figureData}`}
+                                                alt={result.questionSet.figureCaption || 'Question figure'}
+                                                className="result-figure"
+                                            />
+                                        </div>
+                                    )}
 
                                     <div className="options-review">
                                         {['A', 'B', 'C', 'D'].map((option) => (

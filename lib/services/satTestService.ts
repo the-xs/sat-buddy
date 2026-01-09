@@ -3,18 +3,33 @@ import prisma from '@/lib/prisma';
 export const satTestService = {
     // Get all SAT tests
     async getAllTests() {
-        return await prisma.sATTest.findMany({
+        const tests = await prisma.sATTest.findMany({
             include: {
                 modules: {
                     include: {
-                        _count: {
-                            select: { questions: true }
+                        questionSets: {
+                            include: {
+                                _count: {
+                                    select: { questions: true }
+                                }
+                            }
                         }
                     }
                 }
             },
             orderBy: { uploadedAt: 'desc' }
         });
+
+        // Transform to include question counts per module
+        return tests.map(test => ({
+            ...test,
+            modules: test.modules.map(module => ({
+                ...module,
+                _count: {
+                    questions: module.questionSets.reduce((sum, qs) => sum + qs._count.questions, 0)
+                }
+            }))
+        }));
     },
 
     // Get single SAT test with all data
@@ -24,8 +39,13 @@ export const satTestService = {
             include: {
                 modules: {
                     include: {
-                        questions: {
-                            orderBy: { questionNumber: 'asc' }
+                        questionSets: {
+                            include: {
+                                questions: {
+                                    orderBy: { questionNumber: 'asc' }
+                                }
+                            },
+                            orderBy: { orderIndex: 'asc' }
                         }
                     },
                     orderBy: [
@@ -37,7 +57,7 @@ export const satTestService = {
         });
     },
 
-    // Get questions by module
+    // Get questions by module (returns flat list of questions with their questionSet info)
     async getQuestionsByModule(testId: number, section: string, moduleNumber: number) {
         const module = await prisma.module.findFirst({
             where: {
@@ -46,12 +66,33 @@ export const satTestService = {
                 moduleNumber
             },
             include: {
-                questions: {
-                    orderBy: { questionNumber: 'asc' }
+                questionSets: {
+                    include: {
+                        questions: {
+                            orderBy: { questionNumber: 'asc' }
+                        }
+                    },
+                    orderBy: { orderIndex: 'asc' }
                 }
             }
         });
-        return module?.questions || [];
+
+        if (!module) return [];
+
+        // Flatten questions with their questionSet reference
+        return module.questionSets.flatMap(qs =>
+            qs.questions.map(q => ({
+                ...q,
+                questionSet: {
+                    id: qs.id,
+                    passage: qs.passage,
+                    passageIntro: qs.passageIntro,
+                    hasFigure: qs.hasFigure,
+                    figureData: qs.figureData,
+                    figureCaption: qs.figureCaption
+                }
+            }))
+        );
     },
 
     // Get random questions for practice
@@ -59,21 +100,31 @@ export const satTestService = {
         const { testId, section, count = 10 } = options;
 
         const where: {
-            module?: { testId?: number; section?: string };
+            questionSet?: { module?: { testId?: number; section?: string } };
         } = {};
 
         if (testId) {
-            where.module = { testId };
+            where.questionSet = { module: { testId } };
         }
         if (section) {
-            where.module = { ...where.module, section };
+            where.questionSet = { module: { ...where.questionSet?.module, section } };
         }
 
         const questions = await prisma.question.findMany({
             where,
             include: {
-                module: {
-                    select: { section: true, moduleNumber: true }
+                questionSet: {
+                    select: {
+                        id: true,
+                        passage: true,
+                        passageIntro: true,
+                        hasFigure: true,
+                        figureData: true,
+                        figureCaption: true,
+                        module: {
+                            select: { section: true, moduleNumber: true }
+                        }
+                    }
                 }
             }
         });
@@ -90,8 +141,12 @@ export const satTestService = {
             include: {
                 modules: {
                     include: {
-                        _count: {
-                            select: { questions: true }
+                        questionSets: {
+                            include: {
+                                _count: {
+                                    select: { questions: true }
+                                }
+                            }
                         }
                     }
                 }
@@ -111,7 +166,7 @@ export const satTestService = {
         };
 
         test.modules.forEach(m => {
-            const count = m._count.questions;
+            const count = m.questionSets.reduce((sum, qs) => sum + qs._count.questions, 0);
             stats.totalQuestions += count;
 
             if (m.section === 'ReadingWriting' && m.moduleNumber === 1) {
@@ -141,10 +196,10 @@ export const satTestService = {
             prisma.sATTest.count(),
             prisma.question.count(),
             prisma.question.count({
-                where: { module: { section: 'ReadingWriting' } }
+                where: { questionSet: { module: { section: 'ReadingWriting' } } }
             }),
             prisma.question.count({
-                where: { module: { section: 'Math' } }
+                where: { questionSet: { module: { section: 'Math' } } }
             })
         ]);
 
@@ -179,8 +234,13 @@ export const satTestService = {
                     include: {
                         modules: {
                             include: {
-                                questions: {
-                                    orderBy: { questionNumber: 'asc' }
+                                questionSets: {
+                                    include: {
+                                        questions: {
+                                            orderBy: { questionNumber: 'asc' }
+                                        }
+                                    },
+                                    orderBy: { orderIndex: 'asc' }
                                 }
                             },
                             orderBy: [
@@ -204,7 +264,11 @@ export const satTestService = {
                 test: true,
                 results: {
                     include: {
-                        question: true
+                        question: {
+                            include: {
+                                questionSet: true
+                            }
+                        }
                     }
                 }
             }
@@ -257,7 +321,11 @@ export const satTestService = {
                     include: {
                         question: {
                             include: {
-                                module: true
+                                questionSet: {
+                                    include: {
+                                        module: true
+                                    }
+                                }
                             }
                         }
                     }
@@ -275,9 +343,10 @@ export const satTestService = {
 
         session.results.forEach(result => {
             if (result.isCorrect) {
-                if (result.question.module.section === 'ReadingWriting') {
+                const section = result.question.questionSet.module.section;
+                if (section === 'ReadingWriting') {
                     rwCorrect++;
-                } else if (result.question.module.section === 'Math') {
+                } else if (section === 'Math') {
                     mathCorrect++;
                 }
             }
@@ -307,7 +376,11 @@ export const satTestService = {
                     include: {
                         question: {
                             include: {
-                                module: true
+                                questionSet: {
+                                    include: {
+                                        module: true
+                                    }
+                                }
                             }
                         }
                     },
@@ -330,9 +403,17 @@ export const satTestService = {
             questionNumber: r.question.questionNumber,
             questionText: r.question.questionText,
             questionType: r.question.questionType,
-            moduleSection: r.question.module.section,
-            moduleNumber: r.question.module.moduleNumber,
-            hasFigure: r.question.hasFigure,
+            moduleSection: r.question.questionSet.module.section,
+            moduleNumber: r.question.questionSet.module.moduleNumber,
+            // Include questionSet data for passage/figure display
+            questionSet: {
+                id: r.question.questionSet.id,
+                passage: r.question.questionSet.passage,
+                passageIntro: r.question.questionSet.passageIntro,
+                hasFigure: r.question.questionSet.hasFigure,
+                figureData: r.question.questionSet.figureData,
+                figureCaption: r.question.questionSet.figureCaption
+            },
             options: {
                 A: r.question.optionA,
                 B: r.question.optionB,

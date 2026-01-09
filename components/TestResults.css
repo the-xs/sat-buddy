@@ -112,6 +112,8 @@
 }
 
 .result-item {
+    display: block;
+    width: 100%;
     padding: var(--spacing-xl);
     animation: fadeIn var(--transition-base) ease-out;
     animation-fill-mode: both;
@@ -231,6 +233,8 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     animation: fadeIn var(--transition-base) ease-out;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .explanation-panel h4 {
@@ -243,6 +247,7 @@
     flex-direction: column;
     gap: var(--spacing-sm);
     margin-bottom: var(--spacing-lg);
+    width: 100%;
 }
 
 .option-review {
@@ -333,6 +338,57 @@
 .no-explanation {
     font-style: italic;
     color: var(--color-text-tertiary);
+}
+
+/* Passage and Figure Review Styles */
+.passage-review {
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--color-primary);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.passage-review .passage-intro {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.passage-review .passage-text {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--color-text);
+    white-space: pre-wrap;
+}
+
+.figure-review {
+    margin-bottom: var(--spacing-lg);
+    text-align: center;
+    padding: var(--spacing-md);
+    background: var(--color-surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.figure-review .result-figure {
+    max-width: 100%;
+    max-height: 600px;
+    min-height: 200px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.figure-review .result-figure:hover {
+    opacity: 0.9;
 }
 
 .results-actions {

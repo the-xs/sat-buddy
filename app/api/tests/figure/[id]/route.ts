@@ -1,37 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+// GET /api/tests/figure/[id] - Get figure by QuestionSet ID
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const { id } = await params;
-        const questionId = parseInt(id);
+        const questionSetId = parseInt(id);
 
-        if (isNaN(questionId)) {
-            return NextResponse.json({ error: 'Invalid question ID' }, { status: 400 });
+        if (isNaN(questionSetId)) {
+            return NextResponse.json({ error: 'Invalid QuestionSet ID' }, { status: 400 });
         }
 
-        // Fetch question with figure data
-        const question = await prisma.question.findUnique({
-            where: { id: questionId },
+        // Fetch QuestionSet with figure data
+        const questionSet = await prisma.questionSet.findUnique({
+            where: { id: questionSetId },
             select: {
                 hasFigure: true,
                 figureData: true,
             }
         });
 
-        if (!question) {
-            return NextResponse.json({ error: 'Question not found' }, { status: 404 });
+        if (!questionSet) {
+            return NextResponse.json({ error: 'QuestionSet not found' }, { status: 404 });
         }
 
-        if (!question.hasFigure || !question.figureData) {
-            return NextResponse.json({ error: 'Question has no figure' }, { status: 404 });
+        if (!questionSet.hasFigure || !questionSet.figureData) {
+            return NextResponse.json({ error: 'QuestionSet has no figure' }, { status: 404 });
         }
 
         // Decode base64 to buffer
-        const imageBuffer = Buffer.from(question.figureData, 'base64');
+        const imageBuffer = Buffer.from(questionSet.figureData, 'base64');
 
         return new NextResponse(new Uint8Array(imageBuffer), {
             headers: {

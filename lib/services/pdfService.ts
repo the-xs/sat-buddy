@@ -25,17 +25,13 @@ interface ModuleConfig {
     promptSuffix: string;
 }
 
+// Individual question within a QuestionSet (no passage/figure - those are on the set)
 interface ParsedQuestion {
     questionNumber: number;
     questionType: string;
-    questionText: string;
+    questionText: string; // Just the question itself, not the passage
     topic?: string;
     difficulty?: string;
-    hasFigure?: boolean;
-    figureDescription?: string;
-    pageNumber?: number;
-    boundingBox?: number[];
-    figureData?: string; // Base64-encoded PNG
     optionA?: string;
     optionB?: string;
     optionC?: string;
@@ -44,10 +40,23 @@ interface ParsedQuestion {
     explanation?: string;
 }
 
+// A group of questions sharing a passage and/or figure
+interface ParsedQuestionSet {
+    passage?: string | null;
+    passageIntro?: string | null;
+    hasFigure?: boolean;
+    figureDescription?: string | null;
+    pageNumber?: number | null;
+    boundingBox?: number[] | null;
+    figureData?: string; // Base64-encoded PNG (added after extraction)
+    questions: ParsedQuestion[];
+}
+
 interface ParsedModule {
     section: string;
     moduleNumber: number;
-    questions: ParsedQuestion[];
+    timeLimit?: number | null; // Time limit in minutes
+    questionSets: ParsedQuestionSet[];
 }
 
 interface ParsedData {
@@ -137,19 +146,30 @@ export const pdfService = {
 
                 if (result.testName && !testName) testName = result.testName;
 
-                // Log figure detections
-                const figureCount = result.questions.filter((q: ParsedQuestion) => q.hasFigure).length;
+                // Ensure questionSets exists
+                const questionSets: ParsedQuestionSet[] = result.questionSets || [];
+
+                // Extract time limit if provided
+                const timeLimit = result.moduleTimeLimit || null;
+
+                // Log figure detections and question counts
+                const figureCount = questionSets.filter((qs: ParsedQuestionSet) => qs.hasFigure).length;
+                const totalQuestions = questionSets.reduce((sum: number, qs: ParsedQuestionSet) => sum + qs.questions.length, 0);
                 if (figureCount > 0) {
-                    console.log(`   📊 Detected ${figureCount} questions with figures`);
+                    console.log(`   📊 Detected ${figureCount} question sets with figures`);
+                }
+                if (timeLimit) {
+                    console.log(`   ⏱️  Time limit: ${timeLimit} minutes`);
                 }
 
                 extractedModules.push({
                     section: config.section,
                     moduleNumber: config.moduleNumber,
-                    questions: result.questions
+                    timeLimit: timeLimit,
+                    questionSets: questionSets
                 });
 
-                console.log(`   ✅ Extracted ${result.questions.length} questions for ${config.section} Module ${config.moduleNumber}`);
+                console.log(`   ✅ Extracted ${totalQuestions} questions in ${questionSets.length} sets for ${config.section} Module ${config.moduleNumber}`);
             }
 
             this.updateProgress(fileId, 'Cleaning up and saving...', 85);
@@ -188,15 +208,28 @@ export const pdfService = {
             const prompt = `You are an expert SAT test parser. Extract questions ONLY for "${config.promptSuffix}" from this PDF.
 
 **YOUR TASK:**
-Extract EVERY question for this specific module.
+Extract EVERY question for this specific module, grouped into QUESTION SETS.
+
+**QUESTION SET GROUPING RULES:**
+1. If multiple consecutive questions reference the SAME PASSAGE, group them in ONE questionSet
+2. Look for explicit cues like "Questions 5-7 refer to the following passage"
+3. A standalone question with no passage = a questionSet with ONE question and passage: null
+4. If a figure/chart/table is shared by multiple questions, attach it to the questionSet (not individual questions)
+5. For Math: if a diagram or table is referenced by multiple questions, group them together
+6. Preserve the order of question sets and questions as they appear in the PDF
+
+**PASSAGE EXTRACTION:**
+- passage: The main text that questions reference (paragraphs, excerpts, poems, etc.)
+- passageIntro: Any introductory text like "The following is adapted from..." (SEPARATE from main passage)
+- If no passage exists, set both to null
 
 **CRITICAL - PRESERVE FORMATTING:**
 - Mark underlined text with <u>underlined text</u> tags
 - Preserve indentation using spaces (e.g., "    indented text" for paragraph indents)
 - Preserve line breaks as they appear in the PDF using \\n
+- **LINE NUMBERS**: SAT passages have line numbers (5, 10, 15, etc.) in margins - PRESERVE these at the start of the appropriate lines (e.g., "5  The ancient forest...")
 - Mark bold text with **bold** markdown
 - Mark italic text with *italic* markdown
-- For Reading/Writing questions: include the full passage with its introduction (e.g., "The following text is from...") in questionText, preserving all formatting
 - **MATH EXPRESSIONS**: Use LaTeX syntax wrapped in $ delimiters for ALL mathematical expressions:
   - Fractions: $\\frac{numerator}{denominator}$ (e.g., $\\frac{x+1}{2}$)
   - Exponents: $x^{2}$ or $x^{n}$
@@ -206,39 +239,78 @@ Extract EVERY question for this specific module.
   - Multiplication: $\\times$ or $\\cdot$
   - Keep simple variables like x, y, n without $ delimiters unless in a formula
 
-**EXTRACTION FIELDS:**
-1. **Question Number**: The number of the question within this module.
-2. **Question Type**: "MultipleChoice" (A, B, C, D) or "FreeResponse" (usually Math).
-3. **Question Text**: For Reading/Writing - include the passage intro, the full passage text with formatting, AND the actual question. For Math - include the complete problem text.
-4. **Options**: For MultipleChoice, provide A, B, C, D. For FreeResponse, list these as null.
-5. **Correct Answer**: The letter (A, B, C, or D) or the numeric value for FreeResponse.
-6. **Figure Handling**:
-   - **hasFigure**: true if there is a diagram, chart, graph, or geometric figure.
-   - **figureDescription**: A detailed description of the figure that would allow someone to recreate it.
-   - **pageNumber**: The page number in the PDF (1-indexed) where this figure is located.
-   - **boundingBox**: The precise [ymin, xmin, ymax, xmax] coordinates of the figure as normalized values (0-1000).
+**FIGURE HANDLING (at QuestionSet level):**
+- hasFigure: true if the questionSet has a shared figure/chart/table/diagram
+- figureDescription: A detailed description of the figure that would allow someone to recreate it
+- pageNumber: The page number in the PDF (1-indexed) where this figure is located
+- boundingBox: The precise [ymin, xmin, ymax, xmax] coordinates as normalized values (0-1000)
+
+**MATH QUESTION CONTENT - IMPORTANT:**
+- For Math questions, the questionText MUST include ALL mathematical context needed to solve the problem:
+  - Function definitions (e.g., "f(x) = 2x + 3")
+  - Equations and systems of equations
+  - Given values, conditions, and constraints
+  - Any formulas or expressions the question references
+- Do NOT put math content in the "passage" field - passage is only for Reading/Writing text passages
+- For Math, passage should always be null unless there's actual prose text to read
+
+**MODULE TIME LIMIT:**
+- Look for time limit information for this module (e.g., "32 minutes", "35 min", "Time: 32:00")
+- Extract the time in MINUTES as an integer
+- If no time limit is specified, return null
 
 **OUTPUT FORMAT - Return valid JSON:**
 {
   "testName": "The name of the test if found",
-  "questions": [
+  "moduleTimeLimit": integer (minutes) or null,
+  "questionSets": [
     {
-      "questionNumber": 1,
-      "questionType": "MultipleChoice" or "FreeResponse",
-      "questionText": "full question text with passage (if applicable) - PRESERVE ALL FORMATTING including underlines with <u></u> tags, indentation with spaces, and line breaks with \\n",
-      "topic": "SAT Topic (e.g., Heart of Algebra, Rhetoric, Standard English Conventions)",
-      "difficulty": "Easy", "Medium", or "Hard",
+      "passage": "The main passage text with preserved formatting" or null,
+      "passageIntro": "The following text is adapted from..." or null,
       "hasFigure": true or false,
-      "figureDescription": "detailed description" or null,
+      "figureDescription": "detailed description of shared figure" or null,
       "pageNumber": integer or null,
       "boundingBox": [ymin, xmin, ymax, xmax] or null,
-      "optionA": "option A text" or null,
-      "optionB": "option B text" or null,
-      "optionC": "option C text" or null,
-      "optionD": "option D text" or null,
-      "correctAnswer": "A/B/C/D" or "answer",
-      "explanation": "text"
+      "questions": [
+        {
+          "questionNumber": 1,
+          "questionType": "MultipleChoice" or "FreeResponse",
+          "questionText": "The COMPLETE question including all math context, equations, function definitions, and the actual question being asked",
+          "topic": "SAT Topic (e.g., Heart of Algebra, Rhetoric, Standard English Conventions)",
+          "difficulty": "Easy", "Medium", or "Hard",
+          "optionA": "option A text" or null,
+          "optionB": "option B text" or null,
+          "optionC": "option C text" or null,
+          "optionD": "option D text" or null,
+          "correctAnswer": "A/B/C/D" or "numeric answer",
+          "explanation": "brief explanation"
+        }
+      ]
     }
+  ]
+}
+
+**EXAMPLE - Reading/Writing with shared passage (note line numbers):**
+{
+  "questionSets": [
+    {
+      "passage": "    In the depths of the forest, ancient trees\\nstood as silent witnesses to centuries of change.\\n5  Their gnarled branches reached toward the sky,\\nforming a canopy that filtered the afternoon\\nlight into dancing shadows on the forest floor.\\n    The naturalist paused, notebook in hand,\\n10  observing the intricate patterns of moss that\\nclung to the bark of an old oak.",
+      "passageIntro": "The following is from a 2019 novel by Author Name.",
+      "hasFigure": false,
+      "questions": [
+        { "questionNumber": 1, "questionText": "Which choice best states the main idea?", ... },
+        { "questionNumber": 2, "questionText": "As used in line 5, 'ancient' most nearly means", ... }
+      ]
+    }
+  ]
+}
+
+**EXAMPLE - Math with standalone questions:**
+{
+  "questionSets": [
+    { "passage": null, "hasFigure": false, "questions": [{ "questionNumber": 1, "questionText": "If $2x + 3 = 11$, what is the value of $x$?", "questionType": "FreeResponse", "correctAnswer": "4", ... }] },
+    { "passage": null, "hasFigure": false, "questions": [{ "questionNumber": 2, "questionText": "The function $f$ is defined by $f(x) = 3x^2 - 5x + 2$. What is the value of $f(4)$?", "questionType": "FreeResponse", "correctAnswer": "30", ... }] },
+    { "passage": null, "hasFigure": true, "figureDescription": "A right triangle with legs labeled a and b, hypotenuse labeled c", "pageNumber": 5, "boundingBox": [100, 200, 400, 600], "questions": [{ "questionNumber": 3, "questionText": "In the figure shown, if $a = 3$ and $b = 4$, what is the value of $c$?", ... }] }
   ]
 }
 
@@ -319,38 +391,38 @@ Return ONLY valid JSON. No conversational text.`;
                     console.error(`💥 First 500 chars of failing JSON:\n${jsonText.substring(0, 500)}`);
                 }
 
-                // Return empty questions to prevent app crash, but logged error will help debug
-                return { questions: [] };
+                // Return empty questionSets to prevent app crash, but logged error will help debug
+                return { questionSets: [] };
             }
         } catch (error) {
             console.error(`Error extracting ${config.promptSuffix}:`, error);
-            return { questions: [] };
+            return { questionSets: [] };
         }
     },
 
-    // Extract figures from PDF and add base64 data to questions
+    // Extract figures from PDF and add base64 data to QuestionSets
     async extractFiguresFromPdf(fileId: string, pdfPath: string, modules: ParsedModule[]) {
         try {
-            // Collect all questions with figures
-            const questionsWithFigures: { question: ParsedQuestion; moduleIndex: number; questionIndex: number }[] = [];
+            // Collect all QuestionSets with figures
+            const setsWithFigures: { questionSet: ParsedQuestionSet; moduleIndex: number; setIndex: number }[] = [];
 
             modules.forEach((module, moduleIndex) => {
-                module.questions.forEach((question, questionIndex) => {
-                    if (question.hasFigure && question.pageNumber && question.boundingBox?.length === 4) {
-                        questionsWithFigures.push({ question, moduleIndex, questionIndex });
+                module.questionSets.forEach((questionSet, setIndex) => {
+                    if (questionSet.hasFigure && questionSet.pageNumber && questionSet.boundingBox?.length === 4) {
+                        setsWithFigures.push({ questionSet, moduleIndex, setIndex });
                     }
                 });
             });
 
-            if (questionsWithFigures.length === 0) {
+            if (setsWithFigures.length === 0) {
                 console.log('   ℹ️  No figures to extract');
                 return;
             }
 
-            console.log(`   📊 Extracting ${questionsWithFigures.length} figures from PDF...`);
+            console.log(`   📊 Extracting ${setsWithFigures.length} figures from PDF...`);
 
             // Get unique page numbers needed
-            const pageNumbers = [...new Set(questionsWithFigures.map(q => q.question.pageNumber!))];
+            const pageNumbers = [...new Set(setsWithFigures.map(s => s.questionSet.pageNumber!))];
             const pageImages: Map<number, Buffer> = new Map();
 
             // Use pdf-to-img to render PDF pages
@@ -372,23 +444,30 @@ Return ONLY valid JSON. No conversational text.`;
                 }
             }
 
-            // Process each question with a figure
-            for (const { question, moduleIndex, questionIndex } of questionsWithFigures) {
+            // Process each QuestionSet with a figure
+            for (const { questionSet, moduleIndex, setIndex } of setsWithFigures) {
                 try {
-                    const pageImage = pageImages.get(question.pageNumber!);
+                    const pageImage = pageImages.get(questionSet.pageNumber!);
                     if (!pageImage) continue;
 
-                    const boundingBox = question.boundingBox!;
+                    const boundingBox = questionSet.boundingBox!;
                     const metadata = await sharp(pageImage).metadata();
                     const imageWidth = metadata.width || 1;
                     const imageHeight = metadata.height || 1;
 
                     // Calculate crop coordinates from normalized bounding box (0-1000)
+                    // Add padding (50 units = 5%) to capture more context around the figure
+                    const PADDING = 50;
                     const [ymin, xmin, ymax, xmax] = boundingBox;
-                    const cropX = Math.max(0, Math.round((xmin / 1000) * imageWidth));
-                    const cropY = Math.max(0, Math.round((ymin / 1000) * imageHeight));
-                    const cropWidth = Math.max(1, Math.round(((xmax - xmin) / 1000) * imageWidth));
-                    const cropHeight = Math.max(1, Math.round(((ymax - ymin) / 1000) * imageHeight));
+                    const paddedYmin = Math.max(0, ymin - PADDING);
+                    const paddedXmin = Math.max(0, xmin - PADDING);
+                    const paddedYmax = Math.min(1000, ymax + PADDING);
+                    const paddedXmax = Math.min(1000, xmax + PADDING);
+
+                    const cropX = Math.max(0, Math.round((paddedXmin / 1000) * imageWidth));
+                    const cropY = Math.max(0, Math.round((paddedYmin / 1000) * imageHeight));
+                    const cropWidth = Math.max(1, Math.round(((paddedXmax - paddedXmin) / 1000) * imageWidth));
+                    const cropHeight = Math.max(1, Math.round(((paddedYmax - paddedYmin) / 1000) * imageHeight));
 
                     const croppedBuffer = await sharp(pageImage)
                         .extract({
@@ -400,11 +479,13 @@ Return ONLY valid JSON. No conversational text.`;
                         .png()
                         .toBuffer();
 
-                    // Store base64 data in the question
-                    modules[moduleIndex].questions[questionIndex].figureData = croppedBuffer.toString('base64');
-                    console.log(`      ✅ Extracted figure for Q${question.questionNumber}`);
+                    // Store base64 data in the QuestionSet
+                    modules[moduleIndex].questionSets[setIndex].figureData = croppedBuffer.toString('base64');
+                    const questionNumbers = questionSet.questions.map(q => q.questionNumber).join(', ');
+                    console.log(`      ✅ Extracted figure for QuestionSet (Q${questionNumbers})`);
                 } catch (err) {
-                    console.error(`      ❌ Error extracting figure for Q${question.questionNumber}:`, err);
+                    const questionNumbers = questionSet.questions.map(q => q.questionNumber).join(', ');
+                    console.error(`      ❌ Error extracting figure for QuestionSet (Q${questionNumbers}):`, err);
                 }
             }
 
@@ -428,24 +509,33 @@ Return ONLY valid JSON. No conversational text.`;
                     create: parsedData.modules.map(module => ({
                         section: module.section,
                         moduleNumber: module.moduleNumber,
-                        questions: {
-                            create: module.questions.map(q => ({
-                                questionNumber: q.questionNumber,
-                                questionType: q.questionType,
-                                questionText: q.questionText,
-                                hasFigure: q.hasFigure || false,
-                                figurePageNumber: q.pageNumber || null,
-                                figureBoundingBox: q.boundingBox ? JSON.stringify(q.boundingBox) : null,
-                                figureCaption: q.figureDescription || null,
-                                figureData: q.figureData || null,
-                                optionA: q.optionA || null,
-                                optionB: q.optionB || null,
-                                optionC: q.optionC || null,
-                                optionD: q.optionD || null,
-                                correctAnswer: String(q.correctAnswer),
-                                topic: q.topic || 'General',
-                                difficulty: q.difficulty || 'Medium',
-                                explanation: q.explanation || ''
+                        timeLimit: module.timeLimit || null,
+                        questionSets: {
+                            create: module.questionSets.map((qs, setIndex) => ({
+                                orderIndex: setIndex,
+                                passage: qs.passage || null,
+                                passageIntro: qs.passageIntro || null,
+                                hasFigure: qs.hasFigure || false,
+                                figurePageNumber: qs.pageNumber || null,
+                                figureBoundingBox: qs.boundingBox ? JSON.stringify(qs.boundingBox) : null,
+                                figureCaption: qs.figureDescription || null,
+                                figureData: qs.figureData || null,
+                                questions: {
+                                    create: qs.questions.map((q, qIndex) => ({
+                                        questionNumber: q.questionNumber,
+                                        orderInSet: qIndex,
+                                        questionType: q.questionType,
+                                        questionText: q.questionText,
+                                        optionA: q.optionA || null,
+                                        optionB: q.optionB || null,
+                                        optionC: q.optionC || null,
+                                        optionD: q.optionD || null,
+                                        correctAnswer: String(q.correctAnswer),
+                                        topic: q.topic || 'General',
+                                        difficulty: q.difficulty || 'Medium',
+                                        explanation: q.explanation || ''
+                                    }))
+                                }
                             }))
                         }
                     }))
@@ -454,7 +544,11 @@ Return ONLY valid JSON. No conversational text.`;
             include: {
                 modules: {
                     include: {
-                        questions: true
+                        questionSets: {
+                            include: {
+                                questions: true
+                            }
+                        }
                     }
                 }
             }

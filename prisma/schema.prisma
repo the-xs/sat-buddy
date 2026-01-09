@@ -112,53 +112,75 @@ model Module {
   section       String    // "ReadingWriting" or "Math"
   moduleNumber  Int       @map("module_number") // 1 or 2
   timeLimit     Int?      @map("time_limit") // Time limit in minutes (optional)
-  
+
   test          SATTest   @relation(fields: [testId], references: [id], onDelete: Cascade)
-  questions     Question[]
+  questionSets  QuestionSet[]
 
   @@unique([testId, section, moduleNumber])
   @@index([testId])
   @@map("modules")
 }
 
-// Represents a question within a module
+// Represents a group of questions that share context (passage/figure)
+// Standalone questions have a QuestionSet with null passage/figure
+model QuestionSet {
+  id                Int       @id @default(autoincrement())
+  moduleId          Int       @map("module_id")
+  orderIndex        Int       @map("order_index") // Position within module
+
+  // Shared context (all nullable for standalone questions)
+  passage           String?   @db.Text
+  passageIntro      String?   @map("passage_intro") @db.Text // "The following is adapted from..."
+
+  // Figure data (shared by all questions in set)
+  hasFigure         Boolean   @default(false) @map("has_figure")
+  figureData        String?   @map("figure_data") @db.LongText // Base64-encoded PNG
+  figureCaption     String?   @map("figure_caption") @db.Text
+  figureBoundingBox String?   @map("figure_bounding_box") // JSON: [ymin, xmin, ymax, xmax]
+  figurePageNumber  Int?      @map("figure_page_number")
+
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  module            Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  questions         Question[]
+
+  @@index([moduleId])
+  @@map("question_sets")
+}
+
+// Represents a question within a QuestionSet
 model Question {
   id              Int       @id @default(autoincrement())
-  moduleId        Int       @map("module_id")
-  questionNumber  Int       @map("question_number") // Question number within the module
+  questionSetId   Int       @map("question_set_id")
+  questionNumber  Int       @map("question_number") // Global question number within the module
+  orderInSet      Int       @default(0) @map("order_in_set") // Order within the set (0-based)
   questionType    String    @map("question_type") // "MultipleChoice" or "FreeResponse"
-  questionText    String    @map("question_text") @db.Text
-  
-  // For questions with figures/diagrams
-  hasFigure         Boolean   @default(false) @map("has_figure")
-  figurePageNumber  Int?      @map("figure_page_number") // Page number in PDF (1-indexed)
-  figureBoundingBox String?   @map("figure_bounding_box") // JSON: [ymin, xmin, ymax, xmax] normalized 0-1000
-  figureCaption     String?   @map("figure_caption") @db.Text // AI-generated description of the figure
-  figureData        String?   @map("figure_data") @db.LongText // Base64-encoded PNG image data
-  
+  questionText    String    @map("question_text") @db.Text // Just the question, no embedded passage
+
   // For multiple choice questions
   optionA         String?   @map("option_a") @db.Text
   optionB         String?   @map("option_b") @db.Text
   optionC         String?   @map("option_c") @db.Text
   optionD         String?   @map("option_d") @db.Text
-  
+
   // Correct answer: "A", "B", "C", "D" for MC, or the actual answer for free response
   correctAnswer   String    @map("correct_answer") @db.Text
-  
+
   // Explanation for the answer
   explanation     String?   @db.Text
-  
+
   // Difficulty and topic tags
   difficulty      String?   // "Easy", "Medium", "Hard"
   topic           String?   // e.g., "Algebra", "Grammar", "Reading Comprehension"
-  
+
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
-  
-  module          Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  questionSet     QuestionSet @relation(fields: [questionSetId], references: [id], onDelete: Cascade)
   testResults     TestResult[]
 
-  @@index([moduleId])
+  @@index([questionSetId])
   @@index([questionType])
   @@map("questions")
 }

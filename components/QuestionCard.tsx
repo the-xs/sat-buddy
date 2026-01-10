@@ -253,9 +253,11 @@ interface QuestionCardProps {
     isFirstInSet?: boolean; // Whether to show passage/figure (only for first question in set)
     // Legacy support - figureUrl can still be passed directly
     figureUrl?: string | null;
+    // Control passage/figure display (used by QuestionSetView for split layout)
+    showPassage?: boolean;
 }
 
-const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect, showCorrectAnswer = false, questionSet = null, isFirstInSet = true, figureUrl = null }: QuestionCardProps) => {
+const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect, showCorrectAnswer = false, questionSet = null, isFirstInSet = true, figureUrl = null, showPassage = true }: QuestionCardProps) => {
     const options = ['A', 'B', 'C', 'D'];
     const [freeResponseValue, setFreeResponseValue] = useState(selectedAnswer || '');
     const [figureModalOpen, setFigureModalOpen] = useState(false);
@@ -270,11 +272,11 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
 
     // Determine figure URL - prefer questionSet figure, fall back to legacy figureUrl
     const effectiveFigureUrl = useMemo(() => {
-        if (isFirstInSet && questionSet?.hasFigure && questionSet?.figureData) {
+        if (showPassage && isFirstInSet && questionSet?.hasFigure && questionSet?.figureData) {
             return `data:image/png;base64,${questionSet.figureData}`;
         }
-        return figureUrl;
-    }, [isFirstInSet, questionSet, figureUrl]);
+        return showPassage ? figureUrl : null;
+    }, [showPassage, isFirstInSet, questionSet, figureUrl]);
 
     const getOptionClass = (option: string) => {
         const classes = ['option'];
@@ -324,7 +326,7 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
             </div>
 
             {/* Show passage intro and passage for first question in set */}
-            {isFirstInSet && questionSet?.passage && (
+            {showPassage && isFirstInSet && questionSet?.passage && (
                 <div className="passage-container">
                     {questionSet.passageIntro && (
                         <div className="passage-intro">

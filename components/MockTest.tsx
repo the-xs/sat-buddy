@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle, Clock, BookOpen, Calculator, Loader2, Coffee } from 'lucide-react';
 import QuestionCard from './QuestionCard';
+import QuestionSetView from './QuestionSetView';
 import './MockTest.css';
 
 // Timer constants (in seconds)
@@ -262,6 +263,25 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
         const { end } = getModuleBounds();
         return currentQuestionIndex === end - 1;
     };
+
+    // Get information about the current question set for split-view rendering
+    const getSetInfo = useCallback(() => {
+        const current = allQuestions[currentQuestionIndex];
+        if (!current?.questionSetId) return null;
+
+        const setQuestions = allQuestions.filter(
+            q => q.questionSetId === current.questionSetId
+        );
+        const indexInSet = setQuestions.findIndex(q => q.id === current.id);
+
+        return {
+            questions: setQuestions,
+            indexInSet,
+            total: setQuestions.length,
+            // Only use split view for Reading/Writing with 2+ questions
+            shouldSplit: setQuestions.length > 1 && current.moduleSection === 'ReadingWriting'
+        };
+    }, [allQuestions, currentQuestionIndex]);
 
     const submitTest = useCallback(async () => {
         if (!sessionId) {
@@ -574,25 +594,60 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
 
 
             <div className="question-container">
-                <QuestionCard
-                    question={{
-                        ...currentQuestion,
-                        questionText: currentQuestion.questionText,
-                        questionType: currentQuestion.questionType,
-                        options: [
-                            currentQuestion.optionA,
-                            currentQuestion.optionB,
-                            currentQuestion.optionC,
-                            currentQuestion.optionD
-                        ].filter(Boolean)
-                    }}
-                    questionNumber={currentQuestion.questionNumber}
-                    selectedAnswer={answers[currentQuestion.id]}
-                    onAnswerSelect={(answer: string) => handleAnswerSelect(currentQuestion.id, answer)}
-                    questionSet={currentQuestion.questionSet}
-                    isFirstInSet={currentQuestion.orderInSet === 0 || currentQuestionIndex === 0 ||
-                        allQuestions[currentQuestionIndex - 1]?.questionSetId !== currentQuestion.questionSetId}
-                />
+                {(() => {
+                    const setInfo = getSetInfo();
+
+                    // Use split-view for R/W multi-question sets
+                    if (setInfo?.shouldSplit && currentQuestion.questionSet) {
+                        return (
+                            <QuestionSetView
+                                questionsInSet={setInfo.questions}
+                                currentIndexInSet={setInfo.indexInSet}
+                                questionSet={currentQuestion.questionSet}
+                                answers={answers}
+                                onAnswerSelect={(questionId: number, answer: string) => handleAnswerSelect(questionId, answer)}
+                                onPrevInSet={() => {
+                                    const prevQ = setInfo.questions[setInfo.indexInSet - 1];
+                                    if (prevQ) {
+                                        const idx = allQuestions.findIndex(q => q.id === prevQ.id);
+                                        if (idx >= 0) goToQuestion(idx);
+                                    }
+                                }}
+                                onNextInSet={() => {
+                                    const nextQ = setInfo.questions[setInfo.indexInSet + 1];
+                                    if (nextQ) {
+                                        const idx = allQuestions.findIndex(q => q.id === nextQ.id);
+                                        if (idx >= 0) goToQuestion(idx);
+                                    }
+                                }}
+                                globalQuestionNumber={currentQuestion.questionNumber}
+                            />
+                        );
+                    }
+
+                    // Default: use QuestionCard for single questions or Math
+                    return (
+                        <QuestionCard
+                            question={{
+                                ...currentQuestion,
+                                questionText: currentQuestion.questionText,
+                                questionType: currentQuestion.questionType,
+                                options: [
+                                    currentQuestion.optionA,
+                                    currentQuestion.optionB,
+                                    currentQuestion.optionC,
+                                    currentQuestion.optionD
+                                ].filter(Boolean)
+                            }}
+                            questionNumber={currentQuestion.questionNumber}
+                            selectedAnswer={answers[currentQuestion.id]}
+                            onAnswerSelect={(answer: string) => handleAnswerSelect(currentQuestion.id, answer)}
+                            questionSet={currentQuestion.questionSet}
+                            isFirstInSet={currentQuestion.orderInSet === 0 || currentQuestionIndex === 0 ||
+                                allQuestions[currentQuestionIndex - 1]?.questionSetId !== currentQuestion.questionSetId}
+                        />
+                    );
+                })()}
             </div>
 
             <div className="question-navigator">

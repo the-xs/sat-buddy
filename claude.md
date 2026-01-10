@@ -19,9 +19,58 @@ npm install              # Install dependencies
 npm run dev              # Start dev server (http://localhost:3000)
 npm run build            # Production build
 npm run lint             # Run ESLint
+npm test                 # Run tests in watch mode
+npm run test:run         # Run tests once
+npm run test:coverage    # Run tests with coverage report
 npx prisma db push       # Push schema changes to database
 npx prisma generate      # Regenerate Prisma client
 ```
+
+## Testing
+
+**Framework**: Vitest + React Testing Library + jsdom
+
+**Coverage Thresholds** (enforced in CI):
+- Statements: 85%
+- Branches: 80%
+- Functions: 90%
+- Lines: 85%
+
+**Test Structure**:
+```
+__tests__/
+├── api/                 # API route tests
+│   ├── analytics.test.ts
+│   ├── practice.test.ts
+│   ├── sessions.test.ts
+│   ├── tests.test.ts
+│   └── upload.test.ts
+├── components/          # React component tests
+│   ├── Analytics.test.tsx
+│   ├── Dashboard.test.tsx
+│   ├── QuestionCard.test.tsx
+│   ├── Sidebar.test.tsx
+│   └── ThemeSwitcher.test.tsx
+└── lib/                 # Service/utility tests
+    ├── auth/index.test.ts
+    ├── prisma.test.ts
+    └── services/
+        ├── analyticsService.test.ts
+        ├── pdfService.test.ts
+        ├── practiceService.test.ts
+        └── satTestService.test.ts
+
+__mocks__/               # Shared mocks
+├── auth.ts              # NextAuth mock
+├── gemini.ts            # Google Gemini API mock
+└── prisma.ts            # Prisma client mock
+```
+
+**Writing Tests**:
+- Place tests in `__tests__/` mirroring source structure
+- Mock external dependencies (Prisma, Gemini, fs) in test files
+- Use `vi.mock()` for module mocking, `vi.hoisted()` for hoisted mocks
+- Test both success and error paths for API routes
 
 ## Project Structure
 

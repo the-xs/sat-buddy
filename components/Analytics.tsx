@@ -37,6 +37,7 @@ const Analytics = ({ pastSessions }: AnalyticsProps) => {
     const fetchAnalytics = async () => {
         try {
             setLoading(true);
+            setError(null);
             const response = await fetch('/api/analytics');
             const result = await response.json();
             if (result.success) {

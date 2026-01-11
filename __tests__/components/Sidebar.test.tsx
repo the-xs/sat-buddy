@@ -29,13 +29,14 @@ describe('Sidebar', () => {
     expect(screen.getByText('S')).toBeInTheDocument()
   })
 
-  it('should render all navigation items', () => {
+  it('should render all navigation items (Upload hidden in non-dev)', () => {
     render(<Sidebar activeView="dashboard" onViewChange={mockOnViewChange} />)
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument()
     expect(screen.getByText('Analytics')).toBeInTheDocument()
     expect(screen.getByText('Practice')).toBeInTheDocument()
-    expect(screen.getByText('Upload')).toBeInTheDocument()
+    // Upload is only visible in development mode
+    expect(screen.queryByText('Upload')).not.toBeInTheDocument()
   })
 
   it('should highlight active view', () => {

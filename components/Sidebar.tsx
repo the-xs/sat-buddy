@@ -11,12 +11,16 @@ interface SidebarProps {
 const Sidebar = ({ activeView, onViewChange }: SidebarProps) => {
     const { data: session } = useSession();
 
-    const menuItems = [
+    const allMenuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'analytics', label: 'Analytics', icon: BarChart3 },
         { id: 'practice', label: 'Practice', icon: Dumbbell },
-        { id: 'upload', label: 'Upload', icon: Upload },
+        { id: 'upload', label: 'Upload', icon: Upload, devOnly: true },
     ];
+
+    const menuItems = allMenuItems.filter(item =>
+        !item.devOnly || process.env.NODE_ENV === 'development'
+    );
 
     const handleLogout = async () => {
         await signOut({ callbackUrl: '/login' });

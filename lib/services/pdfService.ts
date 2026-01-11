@@ -144,7 +144,7 @@ export const pdfService = {
                 console.log(`🔍 Extracting ${config.section} Module ${config.moduleNumber}...`);
                 const result = await this.extractModuleWithGemini(uploadResult.file, config);
 
-                if (result.testName && !testName) testName = result.testName;
+                if (result.testName) testName = result.testName;
 
                 // Ensure questionSets exists
                 const questionSets: ParsedQuestionSet[] = result.questionSets || [];

@@ -344,3 +344,70 @@
 .question-number.rw.answered {
     background: #f472b6;
 }
+
+/* Navigator header with filter */
+.navigator-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: var(--spacing-sm);
+}
+
+.bookmark-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.bookmark-filter-btn:hover {
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+    background: hsla(45, 100%, 50%, 0.1);
+}
+
+.bookmark-filter-btn.active {
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+    background: hsla(45, 100%, 50%, 0.15);
+}
+
+/* Bookmarked question number styling */
+.question-number.bookmarked {
+    position: relative;
+    border-color: var(--color-warning);
+    box-shadow: 0 0 0 1px var(--color-warning);
+}
+
+.question-number .bookmark-indicator {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    background: var(--color-warning);
+    border-radius: 50%;
+    color: #000;
+}
+
+/* Disabled questions in grid */
+.question-number.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.question-number.disabled:hover {
+    background: var(--color-bg-secondary);
+    border-color: var(--color-border);
+    transform: none;
+}

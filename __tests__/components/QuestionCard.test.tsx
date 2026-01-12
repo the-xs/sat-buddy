@@ -9,6 +9,12 @@ vi.mock('katex', () => ({
   },
 }))
 
+// Mock lucide-react icons
+vi.mock('lucide-react', () => ({
+  Bookmark: ({ size }: { size?: number }) => <svg data-testid="bookmark-icon" width={size} height={size} />,
+  BookmarkCheck: ({ size }: { size?: number }) => <svg data-testid="bookmark-check-icon" width={size} height={size} />,
+}))
+
 describe('QuestionCard', () => {
   const mockOnAnswerSelect = vi.fn()
 
@@ -814,5 +820,117 @@ describe('QuestionCard', () => {
     expect(document.querySelector('.passage-intro')).toBeInTheDocument()
     expect(screen.getByText('O Pioneers! is a 1913 novel by Willa Cather.')).toBeInTheDocument()
     expect(document.querySelector('.passage-text')).not.toBeInTheDocument()
+  })
+
+  // Bookmark functionality tests
+  it('should render bookmark button when onBookmarkToggle is provided', () => {
+    const mockBookmarkToggle = vi.fn()
+
+    render(
+      <QuestionCard
+        question={baseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+        onBookmarkToggle={mockBookmarkToggle}
+      />
+    )
+
+    const bookmarkBtn = document.querySelector('.bookmark-btn')
+    expect(bookmarkBtn).toBeInTheDocument()
+  })
+
+  it('should not render bookmark button when onBookmarkToggle is not provided', () => {
+    render(
+      <QuestionCard
+        question={baseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+      />
+    )
+
+    const bookmarkBtn = document.querySelector('.bookmark-btn')
+    expect(bookmarkBtn).not.toBeInTheDocument()
+  })
+
+  it('should call onBookmarkToggle when bookmark button is clicked', () => {
+    const mockBookmarkToggle = vi.fn()
+
+    render(
+      <QuestionCard
+        question={baseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+        onBookmarkToggle={mockBookmarkToggle}
+      />
+    )
+
+    const bookmarkBtn = document.querySelector('.bookmark-btn')
+    fireEvent.click(bookmarkBtn!)
+
+    expect(mockBookmarkToggle).toHaveBeenCalledTimes(1)
+  })
+
+  it('should show bookmarked state when isBookmarked is true', () => {
+    const mockBookmarkToggle = vi.fn()
+
+    render(
+      <QuestionCard
+        question={baseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+        isBookmarked={true}
+        onBookmarkToggle={mockBookmarkToggle}
+      />
+    )
+
+    const bookmarkBtn = document.querySelector('.bookmark-btn')
+    expect(bookmarkBtn).toHaveClass('bookmarked')
+  })
+
+  it('should not show bookmarked state when isBookmarked is false', () => {
+    const mockBookmarkToggle = vi.fn()
+
+    render(
+      <QuestionCard
+        question={baseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+        isBookmarked={false}
+        onBookmarkToggle={mockBookmarkToggle}
+      />
+    )
+
+    const bookmarkBtn = document.querySelector('.bookmark-btn')
+    expect(bookmarkBtn).not.toHaveClass('bookmarked')
+  })
+
+  it('should have correct aria-label for bookmark button', () => {
+    const mockBookmarkToggle = vi.fn()
+
+    const { rerender } = render(
+      <QuestionCard
+        question={baseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+        isBookmarked={false}
+        onBookmarkToggle={mockBookmarkToggle}
+      />
+    )
+
+    let bookmarkBtn = document.querySelector('.bookmark-btn')
+    expect(bookmarkBtn).toHaveAttribute('aria-label', 'Bookmark for review')
+
+    rerender(
+      <QuestionCard
+        question={baseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+        isBookmarked={true}
+        onBookmarkToggle={mockBookmarkToggle}
+      />
+    )
+
+    bookmarkBtn = document.querySelector('.bookmark-btn')
+    expect(bookmarkBtn).toHaveAttribute('aria-label', 'Remove bookmark')
   })
 })

@@ -4,7 +4,45 @@
 }
 
 .question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: var(--spacing-sm);
+}
+
+.question-header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.bookmark-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xs);
+    background: transparent;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.bookmark-btn:hover {
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+    background: hsla(45, 100%, 50%, 0.1);
+}
+
+.bookmark-btn.bookmarked {
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+    background: hsla(45, 100%, 50%, 0.15);
+}
+
+.bookmark-btn.bookmarked:hover {
+    background: hsla(45, 100%, 50%, 0.25);
 }
 
 .question-badge {

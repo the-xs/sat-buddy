@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
+import { Bookmark, BookmarkCheck } from 'lucide-react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import './QuestionCard.css';
@@ -255,9 +256,12 @@ interface QuestionCardProps {
     figureUrl?: string | null;
     // Control passage/figure display (used by QuestionSetView for split layout)
     showPassage?: boolean;
+    // Bookmark functionality
+    isBookmarked?: boolean;
+    onBookmarkToggle?: () => void;
 }
 
-const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect, showCorrectAnswer = false, questionSet = null, isFirstInSet = true, figureUrl = null, showPassage = true }: QuestionCardProps) => {
+const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect, showCorrectAnswer = false, questionSet = null, isFirstInSet = true, figureUrl = null, showPassage = true, isBookmarked = false, onBookmarkToggle }: QuestionCardProps) => {
     const options = ['A', 'B', 'C', 'D'];
     const [freeResponseValue, setFreeResponseValue] = useState(selectedAnswer || '');
     const [figureModalOpen, setFigureModalOpen] = useState(false);
@@ -321,8 +325,20 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
     return (
         <div className="question-card glass-card">
             <div className="question-header">
-                <span className="question-badge">Question {questionNumber}</span>
-                {isFreeResponse && <span className="question-type-badge">Free Response</span>}
+                <div className="question-header-left">
+                    <span className="question-badge">Question {questionNumber}</span>
+                    {isFreeResponse && <span className="question-type-badge">Free Response</span>}
+                </div>
+                {onBookmarkToggle && (
+                    <button
+                        className={`bookmark-btn ${isBookmarked ? 'bookmarked' : ''}`}
+                        onClick={onBookmarkToggle}
+                        title={isBookmarked ? 'Remove bookmark' : 'Bookmark for review'}
+                        aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark for review'}
+                    >
+                        {isBookmarked ? <BookmarkCheck size={20} /> : <Bookmark size={20} />}
+                    </button>
+                )}
             </div>
 
             {/* Show passage intro and passage for first question in set */}

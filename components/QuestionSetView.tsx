@@ -168,6 +168,9 @@ interface QuestionSetViewProps {
     onPrevInSet: () => void;
     onNextInSet: () => void;
     globalQuestionNumber: number;
+    // Bookmark functionality
+    isBookmarked?: boolean;
+    onBookmarkToggle?: () => void;
 }
 
 const QuestionSetView = ({
@@ -179,6 +182,8 @@ const QuestionSetView = ({
     onPrevInSet,
     onNextInSet,
     globalQuestionNumber,
+    isBookmarked = false,
+    onBookmarkToggle,
 }: QuestionSetViewProps) => {
     const [figureModalOpen, setFigureModalOpen] = useState(false);
 
@@ -279,6 +284,8 @@ const QuestionSetView = ({
                     showPassage={false}
                     questionSet={null}
                     isFirstInSet={false}
+                    isBookmarked={isBookmarked}
+                    onBookmarkToggle={onBookmarkToggle}
                 />
             </div>
 

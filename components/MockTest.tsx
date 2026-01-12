@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle, Clock, BookOpen, Calculator, Loader2, Coffee } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Clock, BookOpen, Calculator, Loader2, Coffee, Bookmark, BookmarkCheck } from 'lucide-react';
 import QuestionCard from './QuestionCard';
 import QuestionSetView from './QuestionSetView';
 import './MockTest.css';
@@ -90,6 +90,10 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
     const [isOnBreak, setIsOnBreak] = useState(false);
     const [modules, setModules] = useState<Module[]>([]); // Sorted modules for navigation
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Bookmark state
+    const [bookmarks, setBookmarks] = useState<Set<number>>(new Set());
+    const [showBookmarkedOnly, setShowBookmarkedOnly] = useState(false);
 
     useEffect(() => {
         if (test?.id) {
@@ -218,6 +222,18 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
 
     const goToQuestion = (index: number) => {
         setCurrentQuestionIndex(index);
+    };
+
+    const handleToggleBookmark = (questionId: number) => {
+        setBookmarks(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(questionId)) {
+                newSet.delete(questionId);
+            } else {
+                newSet.add(questionId);
+            }
+            return newSet;
+        });
     };
 
     // Get module boundaries for current question
@@ -621,6 +637,8 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
                                     }
                                 }}
                                 globalQuestionNumber={currentQuestion.questionNumber}
+                                isBookmarked={bookmarks.has(currentQuestion.id)}
+                                onBookmarkToggle={() => handleToggleBookmark(currentQuestion.id)}
                             />
                         );
                     }
@@ -645,25 +663,45 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
                             questionSet={currentQuestion.questionSet}
                             isFirstInSet={currentQuestion.orderInSet === 0 || currentQuestionIndex === 0 ||
                                 allQuestions[currentQuestionIndex - 1]?.questionSetId !== currentQuestion.questionSetId}
+                            isBookmarked={bookmarks.has(currentQuestion.id)}
+                            onBookmarkToggle={() => handleToggleBookmark(currentQuestion.id)}
                         />
                     );
                 })()}
             </div>
 
             <div className="question-navigator">
+                <div className="navigator-header">
+                    <button
+                        className={`bookmark-filter-btn ${showBookmarkedOnly ? 'active' : ''}`}
+                        onClick={() => setShowBookmarkedOnly(!showBookmarkedOnly)}
+                        title={showBookmarkedOnly ? 'Show all questions' : 'Show bookmarked only'}
+                    >
+                        {showBookmarkedOnly ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+                        {showBookmarkedOnly ? 'Show All' : `Bookmarked (${bookmarks.size})`}
+                    </button>
+                </div>
                 <div className="question-grid">
                     {allQuestions.map((q, index) => {
                         const isInCurrentModule = q.moduleSection === currentModule?.section &&
                             q.moduleNumber === currentModule?.number;
+                        const isBookmarked = bookmarks.has(q.id);
+
+                        // Filter out non-bookmarked questions when filter is active
+                        if (showBookmarkedOnly && !isBookmarked) {
+                            return null;
+                        }
+
                         return (
                             <button
                                 key={q.id}
                                 onClick={() => isInCurrentModule && goToQuestion(index)}
-                                className={`question-number ${index === currentQuestionIndex ? 'active' : ''} ${answers[q.id] ? 'answered' : ''} ${q.moduleSection === 'Math' ? 'math' : 'rw'} ${!isInCurrentModule ? 'disabled' : ''}`}
-                                title={`${q.moduleSection} M${q.moduleNumber} Q${q.questionNumber}`}
+                                className={`question-number ${index === currentQuestionIndex ? 'active' : ''} ${answers[q.id] ? 'answered' : ''} ${q.moduleSection === 'Math' ? 'math' : 'rw'} ${!isInCurrentModule ? 'disabled' : ''} ${isBookmarked ? 'bookmarked' : ''}`}
+                                title={`${q.moduleSection} M${q.moduleNumber} Q${q.questionNumber}${isBookmarked ? ' (Bookmarked)' : ''}`}
                                 disabled={!isInCurrentModule}
                             >
                                 {index + 1}
+                                {isBookmarked && <span className="bookmark-indicator"><Bookmark size={10} /></span>}
                             </button>
                         );
                     })}

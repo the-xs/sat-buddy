@@ -789,4 +789,30 @@ describe('QuestionCard', () => {
     expect(document.querySelector('.passage-intro')).toBeInTheDocument()
     expect(document.querySelector('.passage-text')).toBeInTheDocument()
   })
+
+  it('should render passageIntro when passage is null', () => {
+    const questionSet = {
+      id: 1,
+      passage: null,
+      passageIntro: 'O Pioneers! is a 1913 novel by Willa Cather.',
+      hasFigure: false,
+      figureData: null,
+      figureCaption: null,
+    }
+
+    render(
+      <QuestionCard
+        question={baseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+        questionSet={questionSet}
+        isFirstInSet={true}
+      />
+    )
+
+    expect(document.querySelector('.passage-container')).toBeInTheDocument()
+    expect(document.querySelector('.passage-intro')).toBeInTheDocument()
+    expect(screen.getByText('O Pioneers! is a 1913 novel by Willa Cather.')).toBeInTheDocument()
+    expect(document.querySelector('.passage-text')).not.toBeInTheDocument()
+  })
 })

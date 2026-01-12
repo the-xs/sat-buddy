@@ -326,16 +326,18 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
             </div>
 
             {/* Show passage intro and passage for first question in set */}
-            {showPassage && isFirstInSet && questionSet?.passage && (
+            {showPassage && isFirstInSet && (questionSet?.passage || questionSet?.passageIntro) && (
                 <div className="passage-container">
-                    {questionSet.passageIntro && (
+                    {questionSet?.passageIntro && (
                         <div className="passage-intro">
                             <FormattedText text={questionSet.passageIntro} />
                         </div>
                     )}
-                    <div className="passage-text">
-                        <FormattedText text={questionSet.passage} />
-                    </div>
+                    {questionSet?.passage && (
+                        <div className="passage-text">
+                            <FormattedText text={questionSet.passage} />
+                        </div>
+                    )}
                 </div>
             )}
 

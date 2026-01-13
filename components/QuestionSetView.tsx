@@ -171,6 +171,9 @@ interface QuestionSetViewProps {
     // Bookmark functionality
     isBookmarked?: boolean;
     onBookmarkToggle?: () => void;
+    // Cross-off functionality
+    crossedOffOptions?: Set<string>;
+    onToggleCrossOff?: (option: string) => void;
 }
 
 const QuestionSetView = ({
@@ -184,6 +187,8 @@ const QuestionSetView = ({
     globalQuestionNumber,
     isBookmarked = false,
     onBookmarkToggle,
+    crossedOffOptions,
+    onToggleCrossOff,
 }: QuestionSetViewProps) => {
     const [figureModalOpen, setFigureModalOpen] = useState(false);
 
@@ -286,6 +291,8 @@ const QuestionSetView = ({
                     isFirstInSet={false}
                     isBookmarked={isBookmarked}
                     onBookmarkToggle={onBookmarkToggle}
+                    crossedOffOptions={crossedOffOptions}
+                    onToggleCrossOff={onToggleCrossOff}
                 />
             </div>
 

@@ -237,6 +237,64 @@
     font-weight: 500;
 }
 
+/* Option wrapper for cross-off button layout */
+.option-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.option-wrapper .option {
+    flex: 1;
+}
+
+/* Cross-off button */
+.cross-off-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    flex-shrink: 0;
+}
+
+.cross-off-btn:hover {
+    border-color: var(--color-error);
+    color: var(--color-error);
+    background: var(--color-error-light);
+}
+
+.cross-off-btn.active {
+    border-color: var(--color-error);
+    color: var(--color-error);
+    background: var(--color-error-light);
+}
+
+/* Crossed-off option styling */
+.option.crossed-off {
+    opacity: 0.5;
+}
+
+.option.crossed-off .option-text {
+    text-decoration: line-through;
+    color: var(--color-text-tertiary);
+}
+
+.option.crossed-off .option-letter {
+    opacity: 0.6;
+}
+
+.option.crossed-off:hover {
+    transform: none;
+}
+
 @media (max-width: 768px) {
     .question-card {
         padding: var(--spacing-lg);

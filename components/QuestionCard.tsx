@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import { Bookmark, BookmarkCheck } from 'lucide-react';
+import { Bookmark, BookmarkCheck, X } from 'lucide-react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import './QuestionCard.css';
@@ -259,9 +259,12 @@ interface QuestionCardProps {
     // Bookmark functionality
     isBookmarked?: boolean;
     onBookmarkToggle?: () => void;
+    // Cross-off functionality (for multiple choice only)
+    crossedOffOptions?: Set<string>;
+    onToggleCrossOff?: (option: string) => void;
 }
 
-const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect, showCorrectAnswer = false, questionSet = null, isFirstInSet = true, figureUrl = null, showPassage = true, isBookmarked = false, onBookmarkToggle }: QuestionCardProps) => {
+const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect, showCorrectAnswer = false, questionSet = null, isFirstInSet = true, figureUrl = null, showPassage = true, isBookmarked = false, onBookmarkToggle, crossedOffOptions, onToggleCrossOff }: QuestionCardProps) => {
     const options = ['A', 'B', 'C', 'D'];
     const [freeResponseValue, setFreeResponseValue] = useState(selectedAnswer || '');
     const [figureModalOpen, setFigureModalOpen] = useState(false);
@@ -294,6 +297,11 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
             }
         } else if (option === selectedAnswer) {
             classes.push('selected');
+        }
+
+        // Add crossed-off class if option is crossed off
+        if (crossedOffOptions?.has(option)) {
+            classes.push('crossed-off');
         }
 
         return classes.join(' ');
@@ -426,15 +434,26 @@ const QuestionCard = ({ question, questionNumber, selectedAnswer, onAnswerSelect
             ) : (
                 <div className="options-container">
                     {options.map((option, index) => (
-                        <button
-                            key={option}
-                            onClick={() => !showCorrectAnswer && onAnswerSelect(option)}
-                            className={getOptionClass(option)}
-                            disabled={showCorrectAnswer}
-                        >
-                            <span className="option-letter">{option}</span>
-                            <span className="option-text"><FormattedText text={question.options?.[index] || ''} /></span>
-                        </button>
+                        <div key={option} className="option-wrapper">
+                            <button
+                                onClick={() => !showCorrectAnswer && onAnswerSelect(option)}
+                                className={getOptionClass(option)}
+                                disabled={showCorrectAnswer}
+                            >
+                                <span className="option-letter">{option}</span>
+                                <span className="option-text"><FormattedText text={question.options?.[index] || ''} /></span>
+                            </button>
+                            {onToggleCrossOff && !showCorrectAnswer && (
+                                <button
+                                    className={`cross-off-btn ${crossedOffOptions?.has(option) ? 'active' : ''}`}
+                                    onClick={() => onToggleCrossOff(option)}
+                                    title={crossedOffOptions?.has(option) ? 'Remove cross-off' : 'Cross off this option'}
+                                    aria-label={crossedOffOptions?.has(option) ? 'Remove cross-off' : 'Cross off this option'}
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
+                        </div>
                     ))}
                 </div>
             )}

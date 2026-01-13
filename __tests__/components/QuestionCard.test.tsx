@@ -13,6 +13,7 @@ vi.mock('katex', () => ({
 vi.mock('lucide-react', () => ({
   Bookmark: ({ size }: { size?: number }) => <svg data-testid="bookmark-icon" width={size} height={size} />,
   BookmarkCheck: ({ size }: { size?: number }) => <svg data-testid="bookmark-check-icon" width={size} height={size} />,
+  X: ({ size }: { size?: number }) => <svg data-testid="x-icon" width={size} height={size} />,
 }))
 
 describe('QuestionCard', () => {
@@ -932,5 +933,130 @@ describe('QuestionCard', () => {
 
     bookmarkBtn = document.querySelector('.bookmark-btn')
     expect(bookmarkBtn).toHaveAttribute('aria-label', 'Remove bookmark')
+  })
+
+  // Cross-off functionality tests
+  it('should render cross-off buttons when onToggleCrossOff is provided', () => {
+    const mockToggleCrossOff = vi.fn()
+
+    render(
+      <QuestionCard
+        question={baseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+        onToggleCrossOff={mockToggleCrossOff}
+      />
+    )
+
+    const crossOffBtns = document.querySelectorAll('.cross-off-btn')
+    expect(crossOffBtns.length).toBe(4) // One for each option A, B, C, D
+  })
+
+  it('should not render cross-off buttons when onToggleCrossOff is not provided', () => {
+    render(
+      <QuestionCard
+        question={baseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+      />
+    )
+
+    const crossOffBtns = document.querySelectorAll('.cross-off-btn')
+    expect(crossOffBtns.length).toBe(0)
+  })
+
+  it('should not render cross-off buttons for free response questions', () => {
+    const freeResponseQuestion = {
+      ...baseQuestion,
+      questionType: 'FreeResponse',
+    }
+    const mockToggleCrossOff = vi.fn()
+
+    render(
+      <QuestionCard
+        question={freeResponseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+        onToggleCrossOff={mockToggleCrossOff}
+      />
+    )
+
+    const crossOffBtns = document.querySelectorAll('.cross-off-btn')
+    expect(crossOffBtns.length).toBe(0)
+  })
+
+  it('should call onToggleCrossOff with correct option when cross-off button is clicked', () => {
+    const mockToggleCrossOff = vi.fn()
+
+    render(
+      <QuestionCard
+        question={baseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+        onToggleCrossOff={mockToggleCrossOff}
+      />
+    )
+
+    const crossOffBtns = document.querySelectorAll('.cross-off-btn')
+    fireEvent.click(crossOffBtns[0]) // Click first cross-off button (option A)
+
+    expect(mockToggleCrossOff).toHaveBeenCalledWith('A')
+  })
+
+  it('should apply crossed-off class to options in crossedOffOptions', () => {
+    const mockToggleCrossOff = vi.fn()
+    const crossedOffOptions = new Set(['B', 'C'])
+
+    render(
+      <QuestionCard
+        question={baseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+        crossedOffOptions={crossedOffOptions}
+        onToggleCrossOff={mockToggleCrossOff}
+      />
+    )
+
+    const options = document.querySelectorAll('.option')
+    expect(options[0]).not.toHaveClass('crossed-off') // A
+    expect(options[1]).toHaveClass('crossed-off') // B
+    expect(options[2]).toHaveClass('crossed-off') // C
+    expect(options[3]).not.toHaveClass('crossed-off') // D
+  })
+
+  it('should show active state on cross-off button for crossed-off options', () => {
+    const mockToggleCrossOff = vi.fn()
+    const crossedOffOptions = new Set(['A'])
+
+    render(
+      <QuestionCard
+        question={baseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+        crossedOffOptions={crossedOffOptions}
+        onToggleCrossOff={mockToggleCrossOff}
+      />
+    )
+
+    const crossOffBtns = document.querySelectorAll('.cross-off-btn')
+    expect(crossOffBtns[0]).toHaveClass('active') // A is crossed off
+    expect(crossOffBtns[1]).not.toHaveClass('active') // B is not crossed off
+  })
+
+  it('should not show cross-off buttons when showCorrectAnswer is true', () => {
+    const mockToggleCrossOff = vi.fn()
+
+    render(
+      <QuestionCard
+        question={baseQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+        onToggleCrossOff={mockToggleCrossOff}
+        showCorrectAnswer={true}
+      />
+    )
+
+    const crossOffBtns = document.querySelectorAll('.cross-off-btn')
+    expect(crossOffBtns.length).toBe(0)
   })
 })

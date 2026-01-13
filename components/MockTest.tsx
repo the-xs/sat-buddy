@@ -95,6 +95,9 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
     const [bookmarks, setBookmarks] = useState<Set<number>>(new Set());
     const [showBookmarkedOnly, setShowBookmarkedOnly] = useState(false);
 
+    // Cross-off state: questionId -> Set of crossed-off options
+    const [crossedOff, setCrossedOff] = useState<Record<number, Set<string>>>({});
+
     useEffect(() => {
         if (test?.id) {
             loadTestData();
@@ -233,6 +236,18 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
                 newSet.add(questionId);
             }
             return newSet;
+        });
+    };
+
+    const handleToggleCrossOff = (questionId: number, option: string) => {
+        setCrossedOff(prev => {
+            const questionCrossedOff = new Set(prev[questionId] || []);
+            if (questionCrossedOff.has(option)) {
+                questionCrossedOff.delete(option);
+            } else {
+                questionCrossedOff.add(option);
+            }
+            return { ...prev, [questionId]: questionCrossedOff };
         });
     };
 
@@ -639,6 +654,8 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
                                 globalQuestionNumber={currentQuestion.questionNumber}
                                 isBookmarked={bookmarks.has(currentQuestion.id)}
                                 onBookmarkToggle={() => handleToggleBookmark(currentQuestion.id)}
+                                crossedOffOptions={crossedOff[currentQuestion.id]}
+                                onToggleCrossOff={(option: string) => handleToggleCrossOff(currentQuestion.id, option)}
                             />
                         );
                     }
@@ -665,6 +682,8 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
                                 allQuestions[currentQuestionIndex - 1]?.questionSetId !== currentQuestion.questionSetId}
                             isBookmarked={bookmarks.has(currentQuestion.id)}
                             onBookmarkToggle={() => handleToggleBookmark(currentQuestion.id)}
+                            crossedOffOptions={crossedOff[currentQuestion.id]}
+                            onToggleCrossOff={(option: string) => handleToggleCrossOff(currentQuestion.id, option)}
                         />
                     );
                 })()}

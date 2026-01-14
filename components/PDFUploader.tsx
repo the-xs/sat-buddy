@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, DragEvent, ChangeEvent } from 'react';
-import { Upload, FileText, CheckCircle, XCircle, Loader, Terminal } from 'lucide-react';
+import { Upload, FileText, CheckCircle, XCircle, Loader, Terminal, Sparkles } from 'lucide-react';
 import './PDFUploader.css';
 
 interface PDFUploaderProps {
@@ -14,6 +14,8 @@ interface ProgressState {
     result?: unknown;
 }
 
+const isDev = process.env.NODE_ENV === 'development';
+
 const PDFUploader = ({ onUploadComplete }: PDFUploaderProps) => {
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
@@ -23,6 +25,7 @@ const PDFUploader = ({ onUploadComplete }: PDFUploaderProps) => {
     const [success, setSuccess] = useState(false);
     const [dragActive, setDragActive] = useState(false);
     const [showConsole, setShowConsole] = useState(false);
+    const [generating, setGenerating] = useState(false);
     const consoleRef = useRef<HTMLDivElement>(null);
 
     // Poll for progress when uploading
@@ -163,6 +166,58 @@ const PDFUploader = ({ onUploadComplete }: PDFUploaderProps) => {
         setProgress({ status: '', progress: 0, logs: [] });
     };
 
+    const handleGenerateTest = async () => {
+        setGenerating(true);
+        setError('');
+        setSuccess(false);
+        setShowConsole(true);
+        setProgress({
+            status: 'Generating AI-powered SAT test...',
+            progress: 10,
+            logs: ['Starting test generation...', 'This may take 2-3 minutes...']
+        });
+
+        try {
+            const response = await fetch('/api/tests/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    difficulty: 'challenging',
+                    topicFocus: 'balanced'
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                setProgress({
+                    status: 'Test generated successfully!',
+                    progress: 100,
+                    logs: [
+                        ...progress.logs,
+                        `Created: ${result.data.name}`,
+                        `Test ID: ${result.data.testId}`,
+                        'All 4 modules generated with questions!'
+                    ]
+                });
+                setSuccess(true);
+                setTimeout(() => {
+                    if (onUploadComplete) {
+                        onUploadComplete(result.data);
+                    }
+                }, 1500);
+            } else {
+                throw new Error(result.error || 'Generation failed');
+            }
+        } catch (err) {
+            console.error('Generation error:', err);
+            setError(err instanceof Error ? err.message : 'Failed to generate test');
+            setProgress(prev => ({ ...prev, progress: -1, status: 'Generation failed' }));
+        } finally {
+            setGenerating(false);
+        }
+    };
+
     return (
         <div className="pdf-uploader">
             <div className="uploader-header">
@@ -256,7 +311,7 @@ const PDFUploader = ({ onUploadComplete }: PDFUploaderProps) => {
             <div className="uploader-actions">
                 <button
                     onClick={handleUpload}
-                    disabled={!file || uploading || success}
+                    disabled={!file || uploading || success || generating}
                     className="btn btn-primary btn-lg"
                 >
                     {uploading ? (
@@ -271,6 +326,27 @@ const PDFUploader = ({ onUploadComplete }: PDFUploaderProps) => {
                         </>
                     )}
                 </button>
+
+                {isDev && (
+                    <button
+                        onClick={handleGenerateTest}
+                        disabled={uploading || generating || success}
+                        className="btn btn-secondary btn-lg"
+                        title="Generate AI-powered SAT test (Dev only)"
+                    >
+                        {generating ? (
+                            <>
+                                <Loader className="spinner" size={20} />
+                                Generating...
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles size={20} />
+                                Generate Test (AI)
+                            </>
+                        )}
+                    </button>
+                )}
             </div>
 
             <div className="ai-hint">

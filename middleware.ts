@@ -17,13 +17,16 @@ export default auth((req) => {
   // Public API routes
   const isPublicApi = pathname.startsWith("/api/auth");
 
+  // Dev-only API routes (test generation)
+  const isDevApi = process.env.NODE_ENV === 'development' && pathname.startsWith("/api/tests/generate");
+
   // Redirect logged-in users away from auth pages
   if (isLoggedIn && isAuthPage) {
     return Response.redirect(new URL("/", req.url));
   }
 
-  // Allow public API routes
-  if (isPublicApi) {
+  // Allow public API routes and dev-only routes
+  if (isPublicApi || isDevApi) {
     return;
   }
 

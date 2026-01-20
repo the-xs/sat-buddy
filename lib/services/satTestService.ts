@@ -426,6 +426,20 @@ export const satTestService = {
             explanation: r.question.explanation
         }));
 
+        // Sort results: Reading first, then Math; within each section by module number, then question number
+        results.sort((a, b) => {
+            // Section order: ReadingWriting before Math
+            if (a.moduleSection !== b.moduleSection) {
+                return a.moduleSection === 'ReadingWriting' ? -1 : 1;
+            }
+            // Module number order
+            if (a.moduleNumber !== b.moduleNumber) {
+                return a.moduleNumber - b.moduleNumber;
+            }
+            // Question number order
+            return a.questionNumber - b.questionNumber;
+        });
+
         return {
             sessionId: session.sessionId,
             testId: session.testId,

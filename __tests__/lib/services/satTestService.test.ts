@@ -516,6 +516,63 @@ describe('satTestService', () => {
       expect(result.totalQuestions).toBe(1)
     })
 
+    it('should sort results by section (Reading first), then module number, then question number', async () => {
+      const createResult = (section: string, moduleNumber: number, questionNumber: number) => ({
+        questionId: questionNumber,
+        userAnswer: 'A',
+        isCorrect: true,
+        question: {
+          questionNumber,
+          questionText: `Q${questionNumber}`,
+          questionType: 'MultipleChoice',
+          optionA: 'A', optionB: 'B', optionC: 'C', optionD: 'D',
+          correctAnswer: 'A',
+          explanation: 'Explanation',
+          questionSet: {
+            id: 1,
+            passage: null,
+            passageIntro: null,
+            hasFigure: false,
+            figureData: null,
+            figureCaption: null,
+            module: { section, moduleNumber },
+          },
+        },
+      })
+
+      // Results in random order
+      mockPrisma.testSession.findUnique.mockResolvedValue({
+        sessionId: 'sess_123',
+        testId: 1,
+        test: { name: 'Test 1' },
+        rwScore: 3,
+        mathScore: 3,
+        totalScore: 6,
+        startedAt: new Date('2024-01-01'),
+        completedAt: new Date('2024-01-01'),
+        results: [
+          createResult('Math', 2, 5),
+          createResult('ReadingWriting', 1, 2),
+          createResult('Math', 1, 3),
+          createResult('ReadingWriting', 2, 1),
+          createResult('ReadingWriting', 1, 1),
+          createResult('Math', 1, 4),
+        ],
+      })
+
+      const result = await satTestService.getSessionResults('sess_123')
+
+      // Verify order: R&W M1 Q1, R&W M1 Q2, R&W M2 Q1, Math M1 Q3, Math M1 Q4, Math M2 Q5
+      expect(result.results.map(r => `${r.moduleSection}-${r.moduleNumber}-${r.questionNumber}`)).toEqual([
+        'ReadingWriting-1-1',
+        'ReadingWriting-1-2',
+        'ReadingWriting-2-1',
+        'Math-1-3',
+        'Math-1-4',
+        'Math-2-5',
+      ])
+    })
+
     it('should throw error for non-existent session', async () => {
       mockPrisma.testSession.findUnique.mockResolvedValue(null)
 

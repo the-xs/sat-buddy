@@ -444,6 +444,38 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
         }
     }, [currentQuestionIndex, allQuestions, modules, testStarted, isOnBreak, currentModuleIndex]);
 
+    // Warn user and auto-submit when leaving during test
+    useEffect(() => {
+        if (!testStarted || !sessionId || submitting) return;
+
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            // Show browser's native confirmation dialog
+            e.preventDefault();
+            e.returnValue = 'You have an incomplete test. Your answers will be submitted if you leave.';
+            return e.returnValue;
+        };
+
+        const handlePageHide = (e: PageTransitionEvent) => {
+            // Only submit if page is actually being unloaded (not cached for back-forward)
+            if (!e.persisted && sessionId) {
+                // Use sendBeacon for reliable submission during page unload
+                const blob = new Blob(
+                    [JSON.stringify({ action: 'submit' })],
+                    { type: 'application/json' }
+                );
+                navigator.sendBeacon(`/api/sessions/${sessionId}`, blob);
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        window.addEventListener('pagehide', handlePageHide);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            window.removeEventListener('pagehide', handlePageHide);
+        };
+    }, [testStarted, sessionId, submitting]);
+
     // Format time as MM:SS
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);

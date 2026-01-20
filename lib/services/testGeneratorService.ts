@@ -69,7 +69,7 @@ const MATH_TOPICS = [
 export const testGeneratorService = {
     // Get progress for a specific job
     getProgress(jobId: string) {
-        return progressMap.get(jobId) || { status: 'unknown', progress: 0, logs: [], result: null };
+        return progressMap.get(jobId) || { status: 'unknown', progress: 0, logs: [], result: null, error: undefined };
     },
 
     // Update progress for a job

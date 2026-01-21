@@ -98,11 +98,85 @@
     margin-bottom: var(--spacing-2xl);
 }
 
-.results-breakdown h2 {
+.results-breakdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
+}
+
+.results-breakdown-header h2 {
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
-    margin-bottom: var(--spacing-xl);
+    margin: 0;
+}
+
+.results-filter {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.results-filter > svg {
+    color: var(--color-text-secondary);
+}
+
+.filter-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.filter-btn:hover {
+    background: var(--color-bg-secondary);
+    border-color: var(--color-text-tertiary);
+}
+
+.filter-btn.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+.filter-btn.correct:hover {
+    border-color: var(--color-success);
+    color: var(--color-success);
+}
+
+.filter-btn.correct.active {
+    background: var(--color-success);
+    border-color: var(--color-success);
+    color: white;
+}
+
+.filter-btn.incorrect:hover {
+    border-color: var(--color-error);
+    color: var(--color-error);
+}
+
+.filter-btn.incorrect.active {
+    background: var(--color-error);
+    border-color: var(--color-error);
+    color: white;
+}
+
+.no-results {
+    padding: var(--spacing-2xl);
+    text-align: center;
+    color: var(--color-text-secondary);
 }
 
 .results-list {
@@ -400,6 +474,16 @@
 @media (max-width: 768px) {
     .results-header {
         padding: var(--spacing-xl);
+    }
+
+    .results-breakdown-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .results-filter {
+        width: 100%;
+        justify-content: flex-start;
     }
 
     .score-circle {

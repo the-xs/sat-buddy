@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { CheckCircle, XCircle, Award, TrendingUp } from 'lucide-react';
+import { CheckCircle, XCircle, Award, TrendingUp, Filter } from 'lucide-react';
 import QuestionCard from './QuestionCard';
 import { LaTeXText } from './LaTeXRenderer';
 import './TestResults.css';
@@ -44,13 +44,25 @@ interface TestResultsProps {
     onReturnHome: () => void;
 }
 
+type FilterType = 'all' | 'correct' | 'incorrect';
+
 const TestResults = ({ sessionData, onReturnHome }: TestResultsProps) => {
     const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
+    const [filter, setFilter] = useState<FilterType>('all');
 
     const results = sessionData?.results || [];
     const correctCount = sessionData?.correctCount || results.filter(r => r.isCorrect).length;
     const totalCount = sessionData?.totalQuestions || results.length;
+    const incorrectCount = totalCount - correctCount;
     const percentage = Math.round((correctCount / totalCount) * 100);
+
+    // Filter results - unanswered (userAnswer is null) counts as incorrect
+    const filteredResults = results.filter(result => {
+        if (filter === 'all') return true;
+        if (filter === 'correct') return result.isCorrect;
+        if (filter === 'incorrect') return !result.isCorrect || result.userAnswer === null;
+        return true;
+    });
 
     const getGrade = () => {
         if (percentage >= 90) return { letter: 'A', color: 'var(--color-success)' };
@@ -92,20 +104,50 @@ const TestResults = ({ sessionData, onReturnHome }: TestResultsProps) => {
                         </div>
                         <div className="score-stat">
                             <XCircle size={24} className="icon-error" />
-                            <span>{totalCount - correctCount} Incorrect</span>
+                            <span>{incorrectCount} Incorrect</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div className="results-breakdown">
-                <h2>
-                    <TrendingUp size={28} />
-                    Question Breakdown
-                </h2>
+                <div className="results-breakdown-header">
+                    <h2>
+                        <TrendingUp size={28} />
+                        Question Breakdown
+                    </h2>
+                    <div className="results-filter">
+                        <Filter size={18} />
+                        <button
+                            className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
+                            onClick={() => setFilter('all')}
+                        >
+                            All ({results.length})
+                        </button>
+                        <button
+                            className={`filter-btn correct ${filter === 'correct' ? 'active' : ''}`}
+                            onClick={() => setFilter('correct')}
+                        >
+                            <CheckCircle size={16} />
+                            Correct ({correctCount})
+                        </button>
+                        <button
+                            className={`filter-btn incorrect ${filter === 'incorrect' ? 'active' : ''}`}
+                            onClick={() => setFilter('incorrect')}
+                        >
+                            <XCircle size={16} />
+                            Wrong ({incorrectCount})
+                        </button>
+                    </div>
+                </div>
 
                 <div className="results-list">
-                    {results.map((result, index) => (
+                    {filteredResults.length === 0 ? (
+                        <div className="no-results glass-card">
+                            <p>No {filter === 'correct' ? 'correct' : 'incorrect'} answers to show.</p>
+                        </div>
+                    ) : (
+                        filteredResults.map((result, index) => (
                         <div key={index} className="result-item glass-card">
                             <div className="result-header">
                                 <div className="result-info">
@@ -216,7 +258,8 @@ const TestResults = ({ sessionData, onReturnHome }: TestResultsProps) => {
                                 </div>
                             )}
                         </div>
-                    ))}
+                    ))
+                    )}
                 </div>
             </div>
 

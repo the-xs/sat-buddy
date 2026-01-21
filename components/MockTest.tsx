@@ -751,7 +751,7 @@ const MockTest = ({ test, onTestComplete }: MockTestProps) => {
                                 title={`${q.moduleSection} M${q.moduleNumber} Q${q.questionNumber}${isBookmarked ? ' (Bookmarked)' : ''}`}
                                 disabled={!isInCurrentModule}
                             >
-                                {index + 1}
+                                {q.questionNumber}
                                 {isBookmarked && <span className="bookmark-indicator"><Bookmark size={10} /></span>}
                             </button>
                         );

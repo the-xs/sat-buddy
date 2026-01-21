@@ -238,6 +238,14 @@ Extract EVERY question for this specific module, grouped into QUESTION SETS.
   - Inequalities: $\\leq$, $\\geq$, $\\neq$
   - Multiplication: $\\times$ or $\\cdot$
   - Keep simple variables like x, y, n without $ delimiters unless in a formula
+  - **CRITICAL - NESTED EXPRESSIONS**: Preserve the EXACT nesting structure:
+    - Square root of a sum: $\\sqrt{w + 19}$ (NOT $\\sqrt{w} + 19$ - the +19 must be INSIDE the sqrt braces)
+    - Squared fraction: $\\left(\\frac{x}{y}\\right)^2$ (use \\left and \\right for proper sizing)
+    - **SQUARE ROOT OF A FRACTION** (VERY IMPORTANT): When a fraction is UNDER a square root sign, write it as $\\sqrt{\\frac{numerator}{denominator}}$ with the ENTIRE \\frac{}{} inside the \\sqrt{} braces
+      - Correct: $w = \\sqrt{\\frac{x}{y}} - 19$ (the fraction x/y is completely inside the square root)
+      - Correct: $w = \\sqrt{\\frac{28x}{14y}} - 19$
+      - WRONG: $w = \\frac{\\sqrt{x}}{y} - 19$ (this puts only x under the root, not the whole fraction)
+      - WRONG: $w = \\sqrt{x/y} - 19$ (use \\frac, not /)
 
 **FIGURE HANDLING (at QuestionSet level):**
 - hasFigure: true if the questionSet has a shared figure/chart/table/diagram
@@ -313,6 +321,29 @@ Extract EVERY question for this specific module, grouped into QUESTION SETS.
     { "passage": null, "hasFigure": true, "figureDescription": "A right triangle with legs labeled a and b, hypotenuse labeled c", "pageNumber": 5, "boundingBox": [100, 200, 400, 600], "questions": [{ "questionNumber": 3, "questionText": "In the figure shown, if $a = 3$ and $b = 4$, what is the value of $c$?", ... }] }
   ]
 }
+
+**EXAMPLE - Math with nested LaTeX (IMPORTANT - note square root of fraction pattern):**
+Options A and B below show SQUARE ROOT OF A FRACTION - the entire \\frac{}{} must be inside \\sqrt{}:
+{
+  "questionSets": [
+    {
+      "passage": null,
+      "hasFigure": false,
+      "questions": [{
+        "questionNumber": 19,
+        "questionText": "$\\\\frac{14x}{7y} = 2\\\\sqrt{w + 19}$\\n\\nThe given equation relates the distinct positive real numbers $w$, $x$, and $y$. Which equation correctly expresses $w$ in terms of $x$ and $y$?",
+        "questionType": "MultipleChoice",
+        "optionA": "$w = \\\\sqrt{\\\\frac{x}{y}} - 19$",
+        "optionB": "$w = \\\\sqrt{\\\\frac{28x}{14y}} - 19$",
+        "optionC": "$w = \\\\left(\\\\frac{x}{y}\\\\right)^2 - 19$",
+        "optionD": "$w = \\\\left(\\\\frac{28x}{14y}\\\\right)^2 - 19$",
+        "correctAnswer": "C",
+        "explanation": "Simplify the left side and solve for w by squaring both sides"
+      }]
+    }
+  ]
+}
+Note: optionA uses \\\\sqrt{\\\\frac{x}{y}} - the fraction x/y is COMPLETELY INSIDE the sqrt braces.
 
 Return ONLY valid JSON. No conversational text.`;
 

@@ -77,14 +77,33 @@ function LaTeXText({ text }: { text: string }) {
     const html = useMemo(() => {
         if (!text) return '';
 
+        // Skip if already contains rendered KaTeX (prevent double-processing)
+        if (text.includes('class="katex"') || text.includes('class=\\"katex\\"')) {
+            return text;
+        }
+
         // Replace display math $$...$$ first
         let result = text.replace(/\$\$([\s\S]*?)\$\$/g, (_, latex) => {
             return renderLatex(latex.trim(), true);
         });
 
+        // First, protect currency patterns like $27, $3.50, $1,000 from being treated as LaTeX
+        // But NOT if followed by LaTeX chars like ^ _ \ { . or letters (e.g., $18^\circ$, $4x$, $2.5b$ are LaTeX)
+        // Include . in negative lookahead to prevent backtracking from $2.5 to $2 when followed by more decimals
+        const currencyPlaceholders: string[] = [];
+        result = result.replace(/\$(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?![\\^_.{\da-zA-Z])/g, (match) => {
+            currencyPlaceholders.push(match);
+            return `__CURRENCY_${currencyPlaceholders.length - 1}__`;
+        });
+
         // Replace inline math $...$
         result = result.replace(/\$([^$]+)\$/g, (_, latex) => {
             return renderLatex(latex.trim(), false);
+        });
+
+        // Restore currency placeholders
+        result = result.replace(/__CURRENCY_(\d+)__/g, (_, index) => {
+            return currencyPlaceholders[parseInt(index)];
         });
 
         // Replace \[...\] display math
@@ -97,7 +116,14 @@ function LaTeXText({ text }: { text: string }) {
             return renderLatex(latex.trim(), false);
         });
 
+        // Skip additional LaTeX command processing if we already rendered $...$ math
+        // This prevents double-rendering of \sqrt, \frac inside KaTeX annotation tags
+        if (result.includes('class="katex"')) {
+            return result;
+        }
+
         // Find and replace LaTeX commands without delimiters (like \frac{}{}, \sqrt{})
+        // Only runs if no $...$ math was found above
         const latexCommandPattern = /\\(frac|sqrt|sum|prod|int|lim|sin|cos|tan|log|ln|exp|overline|underline|text|mathrm|mathbf)/g;
         let match;
         const replacements: { start: number; end: number; replacement: string }[] = [];

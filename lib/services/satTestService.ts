@@ -317,6 +317,19 @@ export const satTestService = {
         const session = await prisma.testSession.findUnique({
             where: { sessionId },
             include: {
+                test: {
+                    include: {
+                        modules: {
+                            include: {
+                                questionSets: {
+                                    include: {
+                                        questions: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 results: {
                     include: {
                         question: {
@@ -337,11 +350,52 @@ export const satTestService = {
             throw new Error('Session not found');
         }
 
+        // Get all questions in the test
+        const allQuestions = session.test.modules.flatMap(m =>
+            m.questionSets.flatMap(qs => qs.questions)
+        );
+
+        // Find questions that weren't answered and create results for them
+        const answeredQuestionIds = new Set(session.results.map(r => r.questionId));
+        const unansweredQuestions = allQuestions.filter(q => !answeredQuestionIds.has(q.id));
+
+        // Create TestResult records for unanswered questions (marked as incorrect)
+        if (unansweredQuestions.length > 0) {
+            await prisma.testResult.createMany({
+                data: unansweredQuestions.map(q => ({
+                    sessionId,
+                    questionId: q.id,
+                    userAnswer: null,
+                    isCorrect: false
+                }))
+            });
+        }
+
+        // Re-fetch results to include the newly created unanswered records
+        const updatedSession = await prisma.testSession.findUnique({
+            where: { sessionId },
+            include: {
+                results: {
+                    include: {
+                        question: {
+                            include: {
+                                questionSet: {
+                                    include: {
+                                        module: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
         // Calculate scores
         let rwCorrect = 0;
         let mathCorrect = 0;
 
-        session.results.forEach(result => {
+        updatedSession!.results.forEach(result => {
             if (result.isCorrect) {
                 const section = result.question.questionSet.module.section;
                 if (section === 'ReadingWriting') {
@@ -353,7 +407,7 @@ export const satTestService = {
         });
 
         // Update session with scores and completion time
-        const updatedSession = await prisma.testSession.update({
+        const finalSession = await prisma.testSession.update({
             where: { sessionId },
             data: {
                 rwScore: rwCorrect,
@@ -363,7 +417,7 @@ export const satTestService = {
             }
         });
 
-        return updatedSession;
+        return finalSession;
     },
 
     // Get detailed results for review

@@ -31,6 +31,7 @@ export const mockPrisma = {
   testResult: {
     findMany: vi.fn(),
     upsert: vi.fn(),
+    createMany: vi.fn(),
   },
   practiceQuestion: {
     create: vi.fn(),

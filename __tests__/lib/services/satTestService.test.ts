@@ -424,15 +424,38 @@ describe('satTestService', () => {
 
   describe('submitSession', () => {
     it('should calculate and update scores', async () => {
-      mockPrisma.testSession.findUnique.mockResolvedValue({
+      const mockResults = [
+        { isCorrect: true, questionId: 1, question: { questionSet: { module: { section: 'ReadingWriting' } } } },
+        { isCorrect: true, questionId: 2, question: { questionSet: { module: { section: 'ReadingWriting' } } } },
+        { isCorrect: false, questionId: 3, question: { questionSet: { module: { section: 'ReadingWriting' } } } },
+        { isCorrect: true, questionId: 4, question: { questionSet: { module: { section: 'Math' } } } },
+        { isCorrect: true, questionId: 5, question: { questionSet: { module: { section: 'Math' } } } },
+      ]
+
+      // First call returns session with test structure for getting all questions
+      mockPrisma.testSession.findUnique.mockResolvedValueOnce({
         sessionId: 'sess_123',
-        results: [
-          { isCorrect: true, question: { questionSet: { module: { section: 'ReadingWriting' } } } },
-          { isCorrect: true, question: { questionSet: { module: { section: 'ReadingWriting' } } } },
-          { isCorrect: false, question: { questionSet: { module: { section: 'ReadingWriting' } } } },
-          { isCorrect: true, question: { questionSet: { module: { section: 'Math' } } } },
-          { isCorrect: true, question: { questionSet: { module: { section: 'Math' } } } },
-        ],
+        test: {
+          modules: [
+            {
+              questionSets: [
+                { questions: [{ id: 1 }, { id: 2 }, { id: 3 }] }
+              ]
+            },
+            {
+              questionSets: [
+                { questions: [{ id: 4 }, { id: 5 }] }
+              ]
+            }
+          ]
+        },
+        results: mockResults,
+      })
+
+      // Second call returns updated session with results for score calculation
+      mockPrisma.testSession.findUnique.mockResolvedValueOnce({
+        sessionId: 'sess_123',
+        results: mockResults,
       })
 
       mockPrisma.testSession.update.mockResolvedValue({
@@ -454,6 +477,56 @@ describe('satTestService', () => {
         },
       })
       expect(result.totalScore).toBe(4)
+    })
+
+    it('should create results for unanswered questions', async () => {
+      const mockResults = [
+        { isCorrect: true, questionId: 1, question: { questionSet: { module: { section: 'Math' } } } },
+      ]
+
+      // First call - session with 3 questions but only 1 answered
+      mockPrisma.testSession.findUnique.mockResolvedValueOnce({
+        sessionId: 'sess_123',
+        test: {
+          modules: [
+            {
+              questionSets: [
+                { questions: [{ id: 1 }, { id: 2 }, { id: 3 }] }
+              ]
+            }
+          ]
+        },
+        results: mockResults,
+      })
+
+      // Second call - after unanswered results created
+      mockPrisma.testSession.findUnique.mockResolvedValueOnce({
+        sessionId: 'sess_123',
+        results: [
+          ...mockResults,
+          { isCorrect: false, questionId: 2, question: { questionSet: { module: { section: 'Math' } } } },
+          { isCorrect: false, questionId: 3, question: { questionSet: { module: { section: 'Math' } } } },
+        ],
+      })
+
+      mockPrisma.testResult.createMany.mockResolvedValue({ count: 2 })
+
+      mockPrisma.testSession.update.mockResolvedValue({
+        sessionId: 'sess_123',
+        rwScore: 0,
+        mathScore: 1,
+        totalScore: 1,
+      })
+
+      await satTestService.submitSession('sess_123')
+
+      // Should create results for questions 2 and 3 (unanswered)
+      expect(mockPrisma.testResult.createMany).toHaveBeenCalledWith({
+        data: expect.arrayContaining([
+          expect.objectContaining({ sessionId: 'sess_123', questionId: 2, userAnswer: null, isCorrect: false }),
+          expect.objectContaining({ sessionId: 'sess_123', questionId: 3, userAnswer: null, isCorrect: false }),
+        ])
+      })
     })
 
     it('should throw error for non-existent session', async () => {

@@ -54,13 +54,13 @@ const TestResults = ({ sessionData, onReturnHome }: TestResultsProps) => {
     const correctCount = sessionData?.correctCount || results.filter(r => r.isCorrect).length;
     const totalCount = sessionData?.totalQuestions || results.length;
     const incorrectCount = totalCount - correctCount;
-    const percentage = Math.round((correctCount / totalCount) * 100);
+    const percentage = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
 
-    // Filter results - unanswered (userAnswer is null) counts as incorrect
+    // Filter results - unanswered questions are already marked as incorrect in backend
     const filteredResults = results.filter(result => {
         if (filter === 'all') return true;
         if (filter === 'correct') return result.isCorrect;
-        if (filter === 'incorrect') return !result.isCorrect || result.userAnswer === null;
+        if (filter === 'incorrect') return !result.isCorrect;
         return true;
     });
 

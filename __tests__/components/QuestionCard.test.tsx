@@ -773,6 +773,178 @@ describe('QuestionCard', () => {
     expect(screen.getByText('Question 1')).toBeInTheDocument()
   })
 
+  it('should render math expressions starting with $0 correctly', () => {
+    // Regression test: $0 should NOT be treated as currency
+    const questionWithZeroStart = {
+      ...baseQuestion,
+      questionText: 'where $0 \\leq x \\leq 10$. Which of the following',
+    }
+
+    render(
+      <QuestionCard
+        question={questionWithZeroStart}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+      />
+    )
+
+    // Should render as math, not leave $0 as literal text
+    expect(document.querySelector('.katex')).toBeInTheDocument()
+    // The literal $0 should not appear in the output
+    expect(document.body.textContent).not.toContain('$0')
+  })
+
+  it('should preserve currency amounts like $19.99', () => {
+    const questionWithCurrency = {
+      ...baseQuestion,
+      questionText: 'The item costs $19.99 plus tax',
+    }
+
+    render(
+      <QuestionCard
+        question={questionWithCurrency}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+      />
+    )
+
+    // Currency should be preserved as-is, not rendered as math
+    expect(document.body.textContent).toContain('$19.99')
+  })
+
+  it('should preserve currency with thousands separator like $1,000', () => {
+    const questionWithLargeCurrency = {
+      ...baseQuestion,
+      questionText: 'The salary is $1,000 per week',
+    }
+
+    render(
+      <QuestionCard
+        question={questionWithLargeCurrency}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+      />
+    )
+
+    expect(document.body.textContent).toContain('$1,000')
+  })
+
+  it('should render inequality symbols like \\leq outside delimiters', () => {
+    // Test that standalone \leq renders even without $...$ delimiters
+    const questionWithStandaloneSymbol = {
+      ...baseQuestion,
+      questionText: 'x \\leq 10 and y \\geq 5',
+    }
+
+    render(
+      <QuestionCard
+        question={questionWithStandaloneSymbol}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+      />
+    )
+
+    // Symbols should be rendered via KaTeX
+    expect(document.querySelectorAll('.katex').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('should handle complex math question with multiple expressions', () => {
+    // This is the actual question that had display issues
+    const complexQuestion = {
+      ...baseQuestion,
+      questionText: 'The function $f(x) = \\frac{1}{9}(x - 7)^{2} + 3$ gives a metal ball\'s height above the ground $f(x)$, in inches, $x$ seconds after it started moving on a track, where $0 \\leq x \\leq 10$. Which of the following is the best interpretation of the vertex of the graph of $y = f(x)$ in the $xy$-plane?',
+    }
+
+    render(
+      <QuestionCard
+        question={complexQuestion}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+      />
+    )
+
+    // Should have multiple KaTeX rendered expressions
+    const katexElements = document.querySelectorAll('.katex')
+    expect(katexElements.length).toBeGreaterThanOrEqual(6)
+    
+    // Should not have any literal $ signs remaining (except in katex internals)
+    const textContent = document.body.textContent || ''
+    // Filter out katex annotation content which may contain $
+    const questionDiv = document.querySelector('.question-text')
+    if (questionDiv) {
+      const directText = questionDiv.textContent || ''
+      // Count $ that are not part of rendered katex
+      const dollarSigns = (directText.match(/\$/g) || []).length
+      // There might be some $ in katex annotation, but should be minimal
+      expect(dollarSigns).toBeLessThan(3)
+    }
+  })
+
+  it('should not match across newlines for inline math', () => {
+    // Regression test: inline math should not span across newlines
+    const questionWithNewline = {
+      ...baseQuestion,
+      questionText: 'Value is $5\nThis is a new line with $x$',
+    }
+
+    render(
+      <QuestionCard
+        question={questionWithNewline}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+      />
+    )
+
+    // $x$ should still render as math
+    expect(document.querySelector('.katex')).toBeInTheDocument()
+  })
+
+  it('should render bare exponent expressions in options like 7x^{6}', () => {
+    // Regression test: options with exponents but no $...$ delimiters should render
+    const questionWithExponentOptions = {
+      ...baseQuestion,
+      questionText: 'Which expression is equivalent to $12x^3 - 5x^3$?',
+      optionA: '7x^{6}',
+      optionB: '17x^{3}',
+      optionC: '7x^{3}',
+      optionD: '17x^{6}',
+      options: ['7x^{6}', '17x^{3}', '7x^{3}', '17x^{6}'],
+    }
+
+    render(
+      <QuestionCard
+        question={questionWithExponentOptions}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+      />
+    )
+
+    // All options should be rendered as math (wrapped in katex spans)
+    const katexElements = document.querySelectorAll('.katex')
+    // At least 5: one from question text + 4 from options
+    expect(katexElements.length).toBeGreaterThanOrEqual(5)
+  })
+
+  it('should render subscript expressions like x_{n}', () => {
+    const questionWithSubscript = {
+      ...baseQuestion,
+      questionText: 'Find the value of x',
+      options: ['x_{1}', 'x_{2}', 'x_{n-1}', 'x_{n+1}'],
+    }
+
+    render(
+      <QuestionCard
+        question={questionWithSubscript}
+        questionNumber={1}
+        onAnswerSelect={mockOnAnswerSelect}
+      />
+    )
+
+    // All 4 subscript expressions should be rendered as KaTeX
+    const katexElements = document.querySelectorAll('.katex')
+    expect(katexElements.length).toBeGreaterThanOrEqual(4)
+  })
+
   it('should render passage intro separately from passage', () => {
     const questionSet = {
       id: 1,

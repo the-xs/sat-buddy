@@ -88,16 +88,30 @@ function LaTeXText({ text }: { text: string }) {
         });
 
         // First, protect currency patterns like $27, $3.50, $1,000 from being treated as LaTeX
-        // But NOT if followed by LaTeX chars like ^ _ \ { . or letters (e.g., $18^\circ$, $4x$, $2.5b$ are LaTeX)
-        // Include . in negative lookahead to prevent backtracking from $2.5 to $2 when followed by more decimals
+        // Currency requirements:
+        // 1. Must be $NUMBER (with optional thousands separators and exactly 2 decimal places for cents)
+        // 2. Must NOT be followed by anything that looks like math (letters, backslash, operators)
+        // 3. The number after $ should look like money (not just any digit like $0, $x$)
+        // Examples of currency: $5, $10, $1,000, $19.99, $1,234.56
+        // Examples of NOT currency: $0 \leq x$ (math), $x$ (variable), $2x$ (math)
         const currencyPlaceholders: string[] = [];
-        result = result.replace(/\$(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?![\\^_.{\da-zA-Z])/g, (match) => {
+        // Match $AMOUNT only when followed by non-math context (punctuation, word boundaries)
+        // and the amount looks like real currency (not $0 alone, must be $1+ or have cents)
+        result = result.replace(/\$([1-9]\d{0,2}(?:,\d{3})*(?:\.\d{2})?|\d+\.\d{2})(?=[\s,.\-;:!?)}\]"]|$)(?!\s*\\)/g, (match) => {
             currencyPlaceholders.push(match);
             return `__CURRENCY_${currencyPlaceholders.length - 1}__`;
         });
 
         // Replace inline math $...$
-        result = result.replace(/\$([^$]+)\$/g, (_, latex) => {
+        // Use a more conservative pattern that doesn't match across sentence boundaries
+        // This prevents malformed delimiters from capturing entire paragraphs
+        // Pattern: $...$ where content doesn't contain newlines or sentence-ending patterns
+        result = result.replace(/\$([^$\n]+)\$/g, (_, latex) => {
+            // Additional sanity check: if the "latex" content is too long or looks like prose, skip it
+            // Valid LaTeX expressions are typically short (under 200 chars) and contain math-like characters
+            if (latex.length > 200 || /\.\s+[A-Z]/.test(latex)) {
+                return `$${latex}$`; // Return unchanged
+            }
             return renderLatex(latex.trim(), false);
         });
 
@@ -114,6 +128,13 @@ function LaTeXText({ text }: { text: string }) {
         // Replace \(...\) inline math
         result = result.replace(/\\\(([\s\S]*?)\\\)/g, (_, latex) => {
             return renderLatex(latex.trim(), false);
+        });
+
+        // Always process standalone Greek letters and symbols FIRST (before checking for katex)
+        // This ensures symbols like \leq render even if they appear outside of $...$ delimiters
+        // Use negative lookbehind to avoid processing already-rendered content
+        result = result.replace(/(?<!class=")\\(pi|theta|alpha|beta|gamma|delta|infty|pm|times|div|cdot|leq|geq|neq|approx|equiv|degree|lt|gt)(?![a-zA-Z])/g, (match) => {
+            return renderLatex(match, false);
         });
 
         // Skip additional LaTeX command processing if we already rendered $...$ math
@@ -146,9 +167,14 @@ function LaTeXText({ text }: { text: string }) {
             result = result.slice(0, start) + replacement + result.slice(end);
         }
 
-        // Replace standalone Greek letters and symbols
-        result = result.replace(/\\(pi|theta|alpha|beta|gamma|delta|infty|pm|times|div|cdot|leq|geq|neq|approx|equiv|degree)(?![a-zA-Z])/g, (match) => {
-            return renderLatex(match, false);
+        // Handle bare math expressions with exponents/subscripts like "7x^{6}" or "x_{n}"
+        // These are common in answer options without $...$ delimiters
+        result = result.replace(/([a-zA-Z0-9]+(?:\^{[^}]+}|_{[^}]+})+)/g, (match) => {
+            // Only render if it looks like math (contains ^{ or _{)
+            if (match.includes('^{') || match.includes('_{')) {
+                return renderLatex(match, false);
+            }
+            return match;
         });
 
         return result;

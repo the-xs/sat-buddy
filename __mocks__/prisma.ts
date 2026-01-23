@@ -13,11 +13,13 @@ export const mockPrisma = {
   module: {
     findFirst: vi.fn(),
     findMany: vi.fn(),
+    create: vi.fn(),
   },
   question: {
     findMany: vi.fn(),
     findUnique: vi.fn(),
     count: vi.fn(),
+    update: vi.fn(),
   },
   questionSet: {
     findUnique: vi.fn(),

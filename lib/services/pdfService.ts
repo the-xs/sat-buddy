@@ -1,13 +1,16 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GoogleAIFileManager } from '@google/generative-ai/server';
 import prisma from '@/lib/prisma';
 import sharp from 'sharp';
-
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY || '');
+import {
+    generateWithFallback,
+    uploadFile,
+    deleteFile,
+    createPartFromUri,
+    createUserContent
+} from '@/lib/gemini/client';
+import { getVerificationBatchSize, isVerificationEnabled } from '@/lib/gemini/config';
+import { QuestionForVerification, BatchVerificationResponse } from '@/lib/gemini/types';
 
 // Upload directories - use /tmp for serverless or local uploads folder
 const UPLOADS_DIR = process.env.NODE_ENV === 'production'
@@ -106,25 +109,30 @@ export const pdfService = {
             this.updateProgress(fileId, 'Storing PDF...', 5);
             console.log('📄 Starting PDF parsing with Gemini 3 Flash (Module-by-Module)...');
 
-            // Move PDF to permanent storage
             const pdfFilename = `${Date.now()}-${originalName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
             const permanentPath = path.join(PDF_DIR, pdfFilename);
             await fs.copyFile(filePath, permanentPath);
             await fs.unlink(filePath);
 
             console.log(`📁 Stored PDF at: ${permanentPath}`);
-            this.updateProgress(fileId, 'Uploading to Gemini AI...', 15);
+            this.updateProgress(fileId, 'Uploading to Gemini AI...', 10);
 
-            // Upload PDF to Gemini
             console.log('⬆️  Uploading PDF to Gemini...');
-            const uploadResult = await fileManager.uploadFile(permanentPath, {
-                mimeType: 'application/pdf',
-                displayName: originalName
+            const uploadResult = await uploadFile(permanentPath, 'application/pdf');
+            console.log(`✅ Uploaded to Gemini: ${uploadResult.uri}`);
+
+            let testName = originalName.replace('.pdf', '').replace(/[_-]/g, ' ');
+
+            this.updateProgress(fileId, 'Creating test record...', 15);
+            const satTest = await prisma.sATTest.create({
+                data: {
+                    name: testName,
+                    pdfFilename: pdfFilename,
+                    originalName: originalName
+                }
             });
+            console.log(`📝 Created test record: ID ${satTest.id}`);
 
-            console.log(`✅ Uploaded to Gemini: ${uploadResult.file.uri}`);
-
-            // Define modules to extract
             const moduleConfigs: ModuleConfig[] = [
                 { section: 'ReadingWriting', moduleNumber: 1, promptSuffix: 'Reading and Writing Module 1' },
                 { section: 'ReadingWriting', moduleNumber: 2, promptSuffix: 'Reading and Writing Module 2' },
@@ -132,27 +140,26 @@ export const pdfService = {
                 { section: 'Math', moduleNumber: 2, promptSuffix: 'Math Module 2' }
             ];
 
-            const extractedModules: ParsedModule[] = [];
-            let testName = originalName.replace('.pdf', '').replace(/[_-]/g, ' ');
-
-            // Extract each module sequentially
             for (let i = 0; i < moduleConfigs.length; i++) {
                 const config = moduleConfigs[i];
-                const progressVal = 25 + (i * 15); // 25, 40, 55, 70
-                this.updateProgress(fileId, `Extracting ${config.section} Module ${config.moduleNumber}...`, progressVal);
+                const baseProgress = 20 + (i * 20); // 20, 40, 60, 80
 
+                this.updateProgress(fileId, `Extracting ${config.section} Module ${config.moduleNumber}...`, baseProgress);
                 console.log(`🔍 Extracting ${config.section} Module ${config.moduleNumber}...`);
-                const result = await this.extractModuleWithGemini(uploadResult.file, config);
 
-                if (result.testName) testName = result.testName;
+                const result = await this.extractModuleWithGemini(uploadResult, config);
 
-                // Ensure questionSets exists
+                if (result.testName && i === 0) {
+                    testName = result.testName;
+                    await prisma.sATTest.update({
+                        where: { id: satTest.id },
+                        data: { name: testName }
+                    });
+                }
+
                 const questionSets: ParsedQuestionSet[] = result.questionSets || [];
-
-                // Extract time limit if provided
                 const timeLimit = result.moduleTimeLimit || null;
 
-                // Log figure detections and question counts
                 const figureCount = questionSets.filter((qs: ParsedQuestionSet) => qs.hasFigure).length;
                 const totalQuestions = questionSets.reduce((sum: number, qs: ParsedQuestionSet) => sum + qs.questions.length, 0);
                 if (figureCount > 0) {
@@ -162,36 +169,47 @@ export const pdfService = {
                     console.log(`   ⏱️  Time limit: ${timeLimit} minutes`);
                 }
 
-                extractedModules.push({
+                const moduleData: ParsedModule = {
                     section: config.section,
                     moduleNumber: config.moduleNumber,
                     timeLimit: timeLimit,
                     questionSets: questionSets
-                });
+                };
 
-                console.log(`   ✅ Extracted ${totalQuestions} questions in ${questionSets.length} sets for ${config.section} Module ${config.moduleNumber}`);
+                if (figureCount > 0) {
+                    this.updateProgress(fileId, `Extracting figures for ${config.section} M${config.moduleNumber}...`, baseProgress + 5);
+                    await this.extractFiguresForModule(permanentPath, moduleData);
+                }
+
+                this.updateProgress(fileId, `Saving ${config.section} Module ${config.moduleNumber}...`, baseProgress + 10);
+                const savedModule = await this.saveModule(satTest.id, moduleData);
+                console.log(`   ✅ Saved ${totalQuestions} questions for ${config.section} Module ${config.moduleNumber}`);
+
+                if (isVerificationEnabled() && totalQuestions > 0) {
+                    this.updateProgress(fileId, `Verifying ${config.section} M${config.moduleNumber}...`, baseProgress + 15);
+                    await this.verifyModule(fileId, satTest.id, satTest.name, savedModule);
+                }
             }
 
-            this.updateProgress(fileId, 'Cleaning up and saving...', 85);
-            const parsedData: ParsedData = {
-                testName: testName,
-                modules: extractedModules
-            };
-
-            // Clean up Gemini file
-            await fileManager.deleteFile(uploadResult.file.name);
+            await deleteFile(uploadResult.name);
             console.log('🗑️  Cleaned up Gemini file');
 
-            // Extract figures from PDF
-            this.updateProgress(fileId, 'Extracting figures...', 80);
-            await this.extractFiguresFromPdf(fileId, permanentPath, extractedModules);
+            const finalTest = await prisma.sATTest.findUnique({
+                where: { id: satTest.id },
+                include: {
+                    modules: {
+                        include: {
+                            questionSets: {
+                                include: { questions: true }
+                            }
+                        }
+                    }
+                }
+            });
 
-            // Store in database
-            this.updateProgress(fileId, 'Saving to database...', 95);
-            const satTest = await this.storeInDatabase(parsedData, pdfFilename, originalName);
-
-            this.updateProgress(fileId, 'Complete!', 100, satTest);
-            return satTest;
+            this.updateProgress(fileId, 'Complete!', 100, finalTest);
+            console.log(`\n📊 Processing Complete: Test ID: ${satTest.id}`);
+            return finalTest;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             this.updateProgress(fileId, `Error: ${errorMessage}`, -1);
@@ -200,11 +218,8 @@ export const pdfService = {
         }
     },
 
-    // Extract a specific module using Gemini
     async extractModuleWithGemini(file: { mimeType: string; uri: string; name: string }, config: ModuleConfig) {
         try {
-            const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
-
             const prompt = `You are an expert SAT test parser. Extract questions ONLY for "${config.promptSuffix}" from this PDF.
 
 **YOUR TASK:**
@@ -347,25 +362,16 @@ Note: optionA uses \\\\sqrt{\\\\frac{x}{y}} - the fraction x/y is COMPLETELY INS
 
 Return ONLY valid JSON. No conversational text.`;
 
-            const result = await model.generateContent([
-                {
-                    fileData: {
-                        mimeType: file.mimeType,
-                        fileUri: file.uri
-                    }
-                },
-                { text: prompt }
+            const contents = createUserContent([
+                createPartFromUri(file.uri, file.mimeType),
+                prompt
             ]);
 
-            if (!result.response) {
-                console.error(`   ❌ No response from Gemini for ${config.promptSuffix}`);
-                return { questions: [] };
-            }
+            const { text: responseText } = await generateWithFallback('pdfParsing', contents);
 
-            const responseText = result.response.text();
             if (!responseText) {
-                console.error(`   ❌ Empty response text from Gemini for ${config.promptSuffix}`);
-                return { questions: [] };
+                console.error(`   ❌ Empty response from Gemini for ${config.promptSuffix}`);
+                return { questionSets: [] };
             }
 
             let jsonText = responseText.trim();
@@ -385,7 +391,7 @@ Return ONLY valid JSON. No conversational text.`;
             //
             // EVERYTHING ELSE starting with \ is treated as an unescaped LaTeX command (e.g., \alpha, \leq) 
             // and we manually escape the backslash to \\ so it becomes a literal backslash in the string.
-            jsonText = jsonText.replace(/(\\\\|\\"|\\\/|\\b|\\f|\\n|\\r|\\t|\\u[0-9a-fA-F]{4})|(\\)/g, (match, preserved, lone) => {
+            jsonText = jsonText.replace(/(\\\\|\\"|\\\/|\\b|\\f|\\n|\\r|\\t|\\u[0-9a-fA-F]{4})|(\\)/g, (_match: string, preserved: string | undefined, _lone: string | undefined) => {
                 if (preserved) return preserved;
                 return '\\\\';
             });
@@ -523,69 +529,300 @@ Return ONLY valid JSON. No conversational text.`;
             console.log('   ✅ Figure extraction complete');
         } catch (error) {
             console.error('Error extracting figures from PDF:', error);
-            // Don't throw - figures are optional
         }
     },
 
-    // Store parsed data in database
-    async storeInDatabase(parsedData: ParsedData, pdfFilename: string, originalName: string) {
-        console.log('💾 Storing in database...');
+    async extractFiguresForModule(pdfPath: string, module: ParsedModule) {
+        try {
+            const setsWithFigures = module.questionSets
+                .map((qs, idx) => ({ qs, idx }))
+                .filter(({ qs }) => qs.hasFigure && qs.pageNumber && qs.boundingBox?.length === 4);
 
-        const satTest = await prisma.sATTest.create({
+            if (setsWithFigures.length === 0) return;
+
+            const pageNumbers = [...new Set(setsWithFigures.map(s => s.qs.pageNumber!))];
+            const pageImages: Map<number, Buffer> = new Map();
+
+            const { pdf } = await import('pdf-to-img');
+            const pdfBuffer = await fs.readFile(pdfPath);
+            const document = await pdf(pdfBuffer, { scale: 2.0 });
+
+            let currentPage = 0;
+            const maxPage = Math.max(...pageNumbers);
+
+            for await (const image of document) {
+                currentPage++;
+                if (pageNumbers.includes(currentPage)) {
+                    pageImages.set(currentPage, Buffer.from(image));
+                }
+                if (pageImages.size === pageNumbers.length || currentPage >= maxPage) break;
+            }
+
+            for (const { qs, idx } of setsWithFigures) {
+                try {
+                    const pageImage = pageImages.get(qs.pageNumber!);
+                    if (!pageImage) continue;
+
+                    const [ymin, xmin, ymax, xmax] = qs.boundingBox!;
+                    const metadata = await sharp(pageImage).metadata();
+                    const imageWidth = metadata.width || 1;
+                    const imageHeight = metadata.height || 1;
+
+                    const PADDING = 50;
+                    const paddedYmin = Math.max(0, ymin - PADDING);
+                    const paddedXmin = Math.max(0, xmin - PADDING);
+                    const paddedYmax = Math.min(1000, ymax + PADDING);
+                    const paddedXmax = Math.min(1000, xmax + PADDING);
+
+                    const cropX = Math.max(0, Math.round((paddedXmin / 1000) * imageWidth));
+                    const cropY = Math.max(0, Math.round((paddedYmin / 1000) * imageHeight));
+                    const cropWidth = Math.max(1, Math.round(((paddedXmax - paddedXmin) / 1000) * imageWidth));
+                    const cropHeight = Math.max(1, Math.round(((paddedYmax - paddedYmin) / 1000) * imageHeight));
+
+                    const croppedBuffer = await sharp(pageImage)
+                        .extract({
+                            left: Math.min(cropX, imageWidth - 1),
+                            top: Math.min(cropY, imageHeight - 1),
+                            width: Math.min(cropWidth, imageWidth - cropX),
+                            height: Math.min(cropHeight, imageHeight - cropY)
+                        })
+                        .png()
+                        .toBuffer();
+
+                    module.questionSets[idx].figureData = croppedBuffer.toString('base64');
+                    console.log(`      ✅ Extracted figure for Q${qs.questions.map(q => q.questionNumber).join(', ')}`);
+                } catch (err) {
+                    console.error(`      ❌ Figure extraction error:`, err);
+                }
+            }
+        } catch (error) {
+            console.error('Error extracting module figures:', error);
+        }
+    },
+
+    async saveModule(testId: number, module: ParsedModule) {
+        const dbModule = await prisma.module.create({
             data: {
-                name: parsedData.testName || `SAT Practice Test - ${new Date().toLocaleDateString()}`,
-                pdfFilename: pdfFilename,
-                originalName: originalName,
-                modules: {
-                    create: parsedData.modules.map(module => ({
-                        section: module.section,
-                        moduleNumber: module.moduleNumber,
-                        timeLimit: module.timeLimit || null,
-                        questionSets: {
-                            create: module.questionSets.map((qs, setIndex) => ({
-                                orderIndex: setIndex,
-                                passage: qs.passage || null,
-                                passageIntro: qs.passageIntro || null,
-                                hasFigure: qs.hasFigure || false,
-                                figurePageNumber: qs.pageNumber || null,
-                                figureBoundingBox: qs.boundingBox ? JSON.stringify(qs.boundingBox) : null,
-                                figureCaption: qs.figureDescription || null,
-                                figureData: qs.figureData || null,
-                                questions: {
-                                    create: qs.questions.map((q, qIndex) => ({
-                                        questionNumber: q.questionNumber,
-                                        orderInSet: qIndex,
-                                        questionType: q.questionType,
-                                        questionText: q.questionText,
-                                        optionA: q.optionA || null,
-                                        optionB: q.optionB || null,
-                                        optionC: q.optionC || null,
-                                        optionD: q.optionD || null,
-                                        correctAnswer: String(q.correctAnswer),
-                                        topic: q.topic || 'General',
-                                        difficulty: q.difficulty || 'Medium',
-                                        explanation: q.explanation || ''
-                                    }))
-                                }
+                testId,
+                section: module.section,
+                moduleNumber: module.moduleNumber,
+                timeLimit: module.timeLimit || null,
+                questionSets: {
+                    create: module.questionSets.map((qs, setIndex) => ({
+                        orderIndex: setIndex,
+                        passage: qs.passage || null,
+                        passageIntro: qs.passageIntro || null,
+                        hasFigure: qs.hasFigure || false,
+                        figurePageNumber: qs.pageNumber || null,
+                        figureBoundingBox: qs.boundingBox ? JSON.stringify(qs.boundingBox) : null,
+                        figureCaption: qs.figureDescription || null,
+                        figureData: qs.figureData || null,
+                        questions: {
+                            create: qs.questions.map((q, qIndex) => ({
+                                questionNumber: q.questionNumber,
+                                orderInSet: qIndex,
+                                questionType: q.questionType,
+                                questionText: q.questionText,
+                                optionA: q.optionA || null,
+                                optionB: q.optionB || null,
+                                optionC: q.optionC || null,
+                                optionD: q.optionD || null,
+                                correctAnswer: String(q.correctAnswer),
+                                topic: q.topic || 'General',
+                                difficulty: q.difficulty || 'Medium',
+                                explanation: q.explanation || ''
                             }))
                         }
                     }))
                 }
             },
             include: {
-                modules: {
-                    include: {
-                        questionSets: {
-                            include: {
-                                questions: true
-                            }
-                        }
-                    }
+                questionSets: {
+                    include: { questions: true }
                 }
             }
         });
+        return dbModule;
+    },
 
-        console.log(`\n📊 Database Storage Complete: Test ID: ${satTest.id}`);
-        return satTest;
+    async verifyModule(
+        fileId: string,
+        testId: number,
+        testName: string,
+        dbModule: { section: string; moduleNumber: number; questionSets: Array<{ passage: string | null; questions: Array<{ id: number; questionNumber: number; questionText: string; questionType: string; optionA: string | null; optionB: string | null; optionC: string | null; optionD: string | null; correctAnswer: string }> }> }
+    ) {
+        const batchSize = getVerificationBatchSize();
+        const questions: QuestionForVerification[] = [];
+
+        dbModule.questionSets.forEach((set, setIndex) => {
+            set.questions.forEach((q, qIndex) => {
+                questions.push({
+                    questionId: q.id,
+                    setIndex,
+                    qIndex,
+                    questionNumber: q.questionNumber,
+                    questionText: q.questionText,
+                    questionType: q.questionType,
+                    optionA: q.optionA,
+                    optionB: q.optionB,
+                    optionC: q.optionC,
+                    optionD: q.optionD,
+                    correctAnswer: q.correctAnswer,
+                    passage: set.passage
+                });
+            });
+        });
+
+        if (questions.length === 0) return;
+
+        console.log(`   🔍 Verifying ${questions.length} questions...`);
+
+        for (let i = 0; i < questions.length; i += batchSize) {
+            const batch = questions.slice(i, i + batchSize);
+            await this.verifyBatch(fileId, testId, testName, dbModule.section, dbModule.moduleNumber, batch);
+        }
+    },
+
+    async verifyBatch(
+        fileId: string,
+        testId: number,
+        testName: string,
+        section: string,
+        moduleNumber: number,
+        batch: QuestionForVerification[],
+        retryCount = 0
+    ): Promise<void> {
+        const MAX_RETRIES = 2;
+        const startTime = Date.now();
+
+        try {
+            const prompt = this.buildVerificationPrompt(batch, section);
+            const { text, modelUsed, tierUsed } = await generateWithFallback(
+                'answerVerification',
+                prompt,
+                { startTier: 'premium' }
+            );
+
+            const response = this.parseVerificationResponse(text);
+            const processingTimeMs = Date.now() - startTime;
+
+            for (const result of response.verifications) {
+                const question = batch.find(q => q.questionNumber === result.questionNumber);
+                if (!question) continue;
+
+                if (!result.wasCorrect) {
+                    await prisma.question.update({
+                        where: { id: question.questionId },
+                        data: {
+                            correctAnswer: result.verifiedAnswer,
+                            explanation: result.explanation || undefined
+                        }
+                    });
+
+                    console.log(`   ⚠️  Q${result.questionNumber}: ${question.correctAnswer} → ${result.verifiedAnswer} (${result.confidence})`);
+                    this.addLog(fileId, `Corrected Q${result.questionNumber}: ${question.correctAnswer} → ${result.verifiedAnswer}`);
+
+                    await prisma.answerVerificationLog.create({
+                        data: {
+                            testId,
+                            testName,
+                            section,
+                            moduleNumber,
+                            questionNumber: result.questionNumber,
+                            questionText: question.questionText,
+                            originalAnswer: question.correctAnswer,
+                            verifiedAnswer: result.verifiedAnswer,
+                            wasCorrect: false,
+                            explanation: result.explanation,
+                            confidence: result.confidence,
+                            modelUsed,
+                            tierUsed,
+                            thinkingBudget: null,
+                            processingTimeMs
+                        }
+                    });
+                }
+            }
+        } catch (error) {
+            console.error(`   ❌ Verification batch failed (attempt ${retryCount + 1}):`, error);
+
+            if (retryCount < MAX_RETRIES) {
+                const halfSize = Math.ceil(batch.length / 2);
+                if (halfSize >= 1 && batch.length > 1) {
+                    console.log(`   🔄 Retrying with smaller batches (${halfSize} questions each)...`);
+                    await this.verifyBatch(fileId, testId, testName, section, moduleNumber, batch.slice(0, halfSize), retryCount + 1);
+                    await this.verifyBatch(fileId, testId, testName, section, moduleNumber, batch.slice(halfSize), retryCount + 1);
+                    return;
+                }
+            }
+
+            console.log(`   ⏭️  Skipping verification for batch after ${MAX_RETRIES + 1} attempts`);
+        }
+    },
+
+    buildVerificationPrompt(batch: QuestionForVerification[], section: string): string {
+        const questionsJson = batch.map(q => ({
+            questionNumber: q.questionNumber,
+            questionText: q.questionText,
+            questionType: q.questionType,
+            options: q.questionType === 'MultipleChoice' ? {
+                A: q.optionA,
+                B: q.optionB,
+                C: q.optionC,
+                D: q.optionD
+            } : null,
+            passage: q.passage || null,
+            proposedAnswer: q.correctAnswer
+        }));
+
+        return `You are an expert SAT question validator. Think very carefully and deeply about each question. Take your time to reason through every step.
+
+IMPORTANT: This is a critical verification task. Think step by step. Double-check your work. Consider all possibilities before deciding.
+
+For each question:
+1. Read the question, passage (if any), and ALL options extremely carefully
+2. Think hard about the problem - work through it step by step, showing your reasoning
+3. For math: verify calculations twice. For reading: re-read relevant passages
+4. Determine the correct answer with high confidence
+5. Compare with the proposed answer
+6. If different, explain why the proposed answer is wrong and yours is correct
+
+**${section} Questions to verify:**
+${JSON.stringify(questionsJson, null, 2)}
+
+**Output format (JSON only):**
+{
+  "verifications": [
+    {
+      "questionNumber": 1,
+      "wasCorrect": true,
+      "verifiedAnswer": "B",
+      "explanation": "Brief explanation of why this is correct",
+      "confidence": "high"
+    }
+  ]
+}
+
+- wasCorrect: true if proposedAnswer matches your verified answer
+- verifiedAnswer: Your determined correct answer (A/B/C/D for MC, numeric for free response)
+- confidence: "high", "medium", or "low" based on your certainty
+
+Return ONLY valid JSON. No markdown code fences.`;
+    },
+
+    parseVerificationResponse(text: string): BatchVerificationResponse {
+        let jsonText = text.trim();
+        if (jsonText.startsWith('```json')) {
+            jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?$/g, '');
+        } else if (jsonText.startsWith('```')) {
+            jsonText = jsonText.replace(/```\n?/g, '').replace(/```\n?$/g, '');
+        }
+
+        try {
+            return JSON.parse(jsonText);
+        } catch {
+            console.error('Failed to parse verification response:', jsonText.substring(0, 200));
+            return { verifications: [] };
+        }
     }
 };

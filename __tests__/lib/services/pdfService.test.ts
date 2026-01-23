@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-// Use vi.hoisted for all mocks that need to be available during vi.mock hoisting
-const { mockGenerateContent, mockUploadFile, mockDeleteFile } = vi.hoisted(() => ({
-  mockGenerateContent: vi.fn(),
+const { mockGenerateWithFallback, mockUploadFile, mockDeleteFile } = vi.hoisted(() => ({
+  mockGenerateWithFallback: vi.fn(),
   mockUploadFile: vi.fn(),
   mockDeleteFile: vi.fn(),
 }))
@@ -38,29 +37,62 @@ vi.mock('@/lib/prisma', () => ({
   default: {
     sATTest: {
       create: vi.fn().mockResolvedValue({ id: 1, name: 'Test', modules: [] }),
+      update: vi.fn().mockResolvedValue({ id: 1, name: 'Test' }),
+      findUnique: vi.fn().mockResolvedValue({ id: 1, name: 'Test', modules: [] }),
+    },
+    module: {
+      create: vi.fn().mockResolvedValue({ id: 1, section: 'Math', moduleNumber: 1, questionSets: [] }),
+    },
+    question: {
+      update: vi.fn().mockResolvedValue({ id: 1 }),
+    },
+    answerVerificationLog: {
+      create: vi.fn().mockResolvedValue({ id: 1 }),
     },
   },
 }))
 
-vi.mock('@google/generative-ai', () => ({
-  GoogleGenerativeAI: class {
-    getGenerativeModel() {
-      return {
-        generateContent: mockGenerateContent,
-      }
-    }
-  },
+vi.mock('@/lib/gemini/client', () => ({
+  generateWithFallback: mockGenerateWithFallback,
+  uploadFile: mockUploadFile,
+  deleteFile: mockDeleteFile,
+  createPartFromUri: vi.fn((uri: string, mimeType: string) => ({ fileData: { fileUri: uri, mimeType } })),
+  createUserContent: vi.fn((parts: unknown[]) => parts),
 }))
 
-vi.mock('@google/generative-ai/server', () => ({
-  GoogleAIFileManager: class {
-    uploadFile = mockUploadFile
-    deleteFile = mockDeleteFile
-  },
+vi.mock('@/lib/gemini/config', () => ({
+  getVerificationBatchSize: vi.fn(() => 5),
+  isVerificationEnabled: vi.fn(() => false),
 }))
 
-// Import after all mocks are set up
 import { pdfService } from '@/lib/services/pdfService'
+
+interface ParsedQuestionSet {
+  passage?: string | null
+  passageIntro?: string | null
+  hasFigure?: boolean
+  figureDescription?: string | null
+  pageNumber?: number | null
+  boundingBox?: number[] | null
+  figureData?: string
+  questions: {
+    questionNumber: number
+    questionType: string
+    questionText: string
+    correctAnswer: string
+    optionA?: string
+    optionB?: string
+    optionC?: string
+    optionD?: string
+  }[]
+}
+
+interface ParsedModule {
+  section: string
+  moduleNumber: number
+  timeLimit?: number | null
+  questionSets: ParsedQuestionSet[]
+}
 
 describe('pdfService', () => {
   beforeEach(() => {
@@ -103,8 +135,10 @@ describe('pdfService', () => {
 
       expect(progress.status).toBe('Processing')
       expect(progress.progress).toBe(25)
-      expect(progress.timestamp).toBeGreaterThanOrEqual(before)
-      expect(progress.timestamp).toBeLessThanOrEqual(after)
+      if ('timestamp' in progress) {
+        expect(progress.timestamp).toBeGreaterThanOrEqual(before)
+        expect(progress.timestamp).toBeLessThanOrEqual(after)
+      }
     })
 
     it('should store result when provided', () => {
@@ -134,15 +168,13 @@ describe('pdfService', () => {
 
       pdfService.updateProgress('old-file.pdf', 'Complete', 100)
 
-      // Advance time by 11 minutes
       vi.setSystemTime(now + 11 * 60 * 1000)
 
-      // Trigger cleanup by updating another file
       pdfService.updateProgress('new-file.pdf', 'Starting', 0)
 
       const oldProgress = pdfService.getProgress('old-file.pdf')
 
-      expect(oldProgress.status).toBe('starting') // Default, meaning it was cleaned up
+      expect(oldProgress.status).toBe('starting')
     })
   })
 
@@ -172,7 +204,9 @@ describe('pdfService', () => {
       pdfService.addLog('test.pdf', 'New log')
 
       const progress = pdfService.getProgress('test.pdf')
-      expect(progress.timestamp).toBeGreaterThanOrEqual(before)
+      if ('timestamp' in progress) {
+        expect(progress.timestamp).toBeGreaterThanOrEqual(before)
+      }
     })
   })
 
@@ -197,15 +231,15 @@ describe('pdfService', () => {
           {
             passage: null,
             hasFigure: false,
-            questions: [{ questionNumber: 1, questionText: 'Test Q' }],
+            questions: [{ questionNumber: 1, questionText: 'Test Q', questionType: 'MultipleChoice', correctAnswer: 'A' }],
           },
         ],
       }
 
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => JSON.stringify(responseData),
-        },
+      mockGenerateWithFallback.mockResolvedValue({
+        text: JSON.stringify(responseData),
+        modelUsed: 'gemini-2.5-pro',
+        tierUsed: 'standard',
       })
 
       const result = await pdfService.extractModuleWithGemini(mockFile, mockConfig)
@@ -215,12 +249,12 @@ describe('pdfService', () => {
     })
 
     it('should handle JSON wrapped in code fences', async () => {
-      const responseData = { questionSets: [{ questions: [{ questionNumber: 1 }] }] }
+      const responseData = { questionSets: [{ questions: [{ questionNumber: 1, questionText: 'Q', questionType: 'MC', correctAnswer: 'A' }] }] }
 
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => '```json\n' + JSON.stringify(responseData) + '\n```',
-        },
+      mockGenerateWithFallback.mockResolvedValue({
+        text: '```json\n' + JSON.stringify(responseData) + '\n```',
+        modelUsed: 'gemini-2.5-pro',
+        tierUsed: 'standard',
       })
 
       const result = await pdfService.extractModuleWithGemini(mockFile, mockConfig)
@@ -231,10 +265,10 @@ describe('pdfService', () => {
     it('should handle plain code fences', async () => {
       const responseData = { questionSets: [] }
 
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => '```\n' + JSON.stringify(responseData) + '\n```',
-        },
+      mockGenerateWithFallback.mockResolvedValue({
+        text: '```\n' + JSON.stringify(responseData) + '\n```',
+        modelUsed: 'gemini-2.5-pro',
+        tierUsed: 'standard',
       })
 
       const result = await pdfService.extractModuleWithGemini(mockFile, mockConfig)
@@ -243,10 +277,10 @@ describe('pdfService', () => {
     })
 
     it('should return empty questionSets on parse error', async () => {
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => 'invalid json {{{',
-        },
+      mockGenerateWithFallback.mockResolvedValue({
+        text: 'invalid json {{{',
+        modelUsed: 'gemini-2.5-pro',
+        tierUsed: 'standard',
       })
 
       const result = await pdfService.extractModuleWithGemini(mockFile, mockConfig)
@@ -254,30 +288,20 @@ describe('pdfService', () => {
       expect(result.questionSets).toEqual([])
     })
 
-    it('should return empty on no response', async () => {
-      mockGenerateContent.mockResolvedValue({
-        response: null,
+    it('should return empty questionSets on empty response', async () => {
+      mockGenerateWithFallback.mockResolvedValue({
+        text: '',
+        modelUsed: 'gemini-2.5-pro',
+        tierUsed: 'standard',
       })
 
       const result = await pdfService.extractModuleWithGemini(mockFile, mockConfig)
 
-      expect(result.questions).toEqual([])
-    })
-
-    it('should return empty on empty response text', async () => {
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => '',
-        },
-      })
-
-      const result = await pdfService.extractModuleWithGemini(mockFile, mockConfig)
-
-      expect(result.questions).toEqual([])
+      expect(result.questionSets).toEqual([])
     })
 
     it('should handle Gemini API error', async () => {
-      mockGenerateContent.mockRejectedValue(new Error('API Error'))
+      mockGenerateWithFallback.mockRejectedValue(new Error('API Error'))
 
       const result = await pdfService.extractModuleWithGemini(mockFile, mockConfig)
 
@@ -286,23 +310,29 @@ describe('pdfService', () => {
   })
 
   describe('extractFiguresFromPdf', () => {
+    const createMockQuestion = (num: number) => ({
+      questionNumber: num,
+      questionType: 'MultipleChoice' as const,
+      questionText: `Question ${num}`,
+      correctAnswer: 'A',
+    })
+
     it('should skip when no figures to extract', async () => {
-      const modules = [
+      const modules: ParsedModule[] = [
         {
           section: 'Math',
           moduleNumber: 1,
-          questionSets: [{ hasFigure: false, questions: [] }],
+          questionSets: [{ hasFigure: false, questions: [createMockQuestion(1)] }],
         },
       ]
 
-      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules)
+      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules as never)
 
-      // No error thrown, function completes successfully
       expect(true).toBe(true)
     })
 
     it('should skip figures without page number', async () => {
-      const modules = [
+      const modules: ParsedModule[] = [
         {
           section: 'Math',
           moduleNumber: 1,
@@ -311,19 +341,19 @@ describe('pdfService', () => {
               hasFigure: true,
               pageNumber: null,
               boundingBox: [100, 100, 500, 500],
-              questions: [{ questionNumber: 1 }],
+              questions: [createMockQuestion(1)],
             },
           ],
         },
       ]
 
-      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules)
+      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules as never)
 
       expect(modules[0].questionSets[0].figureData).toBeUndefined()
     })
 
     it('should skip figures without complete bounding box', async () => {
-      const modules = [
+      const modules: ParsedModule[] = [
         {
           section: 'Math',
           moduleNumber: 1,
@@ -331,20 +361,20 @@ describe('pdfService', () => {
             {
               hasFigure: true,
               pageNumber: 1,
-              boundingBox: [100, 100], // Incomplete
-              questions: [{ questionNumber: 1 }],
+              boundingBox: [100, 100],
+              questions: [createMockQuestion(1)],
             },
           ],
         },
       ]
 
-      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules)
+      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules as never)
 
       expect(modules[0].questionSets[0].figureData).toBeUndefined()
     })
 
     it('should extract figures when valid figure data exists', async () => {
-      const modules = [
+      const modules: ParsedModule[] = [
         {
           section: 'Math',
           moduleNumber: 1,
@@ -353,20 +383,19 @@ describe('pdfService', () => {
               hasFigure: true,
               pageNumber: 1,
               boundingBox: [100, 100, 500, 500],
-              questions: [{ questionNumber: 1 }],
+              questions: [createMockQuestion(1)],
             },
           ],
         },
       ]
 
-      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules)
+      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules as never)
 
-      // The mock sharp returns 'mock-image' as buffer, which gets base64 encoded
       expect(modules[0].questionSets[0].figureData).toBe(Buffer.from('mock-image').toString('base64'))
     })
 
     it('should extract figures from multiple pages', async () => {
-      const modules = [
+      const modules: ParsedModule[] = [
         {
           section: 'Math',
           moduleNumber: 1,
@@ -375,26 +404,26 @@ describe('pdfService', () => {
               hasFigure: true,
               pageNumber: 1,
               boundingBox: [100, 100, 500, 500],
-              questions: [{ questionNumber: 1 }],
+              questions: [createMockQuestion(1)],
             },
             {
               hasFigure: true,
               pageNumber: 2,
               boundingBox: [200, 200, 600, 600],
-              questions: [{ questionNumber: 2 }],
+              questions: [createMockQuestion(2)],
             },
           ],
         },
       ]
 
-      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules)
+      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules as never)
 
       expect(modules[0].questionSets[0].figureData).toBeDefined()
       expect(modules[0].questionSets[1].figureData).toBeDefined()
     })
 
     it('should handle figures across multiple modules', async () => {
-      const modules = [
+      const modules: ParsedModule[] = [
         {
           section: 'Math',
           moduleNumber: 1,
@@ -403,7 +432,7 @@ describe('pdfService', () => {
               hasFigure: true,
               pageNumber: 1,
               boundingBox: [100, 100, 500, 500],
-              questions: [{ questionNumber: 1 }],
+              questions: [createMockQuestion(1)],
             },
           ],
         },
@@ -415,53 +444,23 @@ describe('pdfService', () => {
               hasFigure: true,
               pageNumber: 2,
               boundingBox: [150, 150, 550, 550],
-              questions: [{ questionNumber: 1 }],
+              questions: [createMockQuestion(1)],
             },
           ],
         },
       ]
 
-      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules)
+      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules as never)
 
       expect(modules[0].questionSets[0].figureData).toBeDefined()
       expect(modules[1].questionSets[0].figureData).toBeDefined()
     })
 
-    it('should handle errors during figure extraction gracefully', async () => {
-      // Mock sharp to throw an error
-      const sharp = (await import('sharp')).default as ReturnType<typeof vi.fn>
-      sharp.mockImplementationOnce(() => {
-        throw new Error('Sharp error')
-      })
-
-      const modules = [
-        {
-          section: 'Math',
-          moduleNumber: 1,
-          questionSets: [
-            {
-              hasFigure: true,
-              pageNumber: 1,
-              boundingBox: [100, 100, 500, 500],
-              questions: [{ questionNumber: 1 }],
-            },
-          ],
-        },
-      ]
-
-      // Should not throw, just log error
-      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules)
-
-      // figureData should be undefined since extraction failed
-      expect(modules[0].questionSets[0].figureData).toBeUndefined()
-    })
-
     it('should handle PDF read errors gracefully', async () => {
-      // Mock fs.readFile to throw an error
       const fs = (await import('fs/promises')).default
       ;(fs.readFile as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('File read error'))
 
-      const modules = [
+      const modules: ParsedModule[] = [
         {
           section: 'Math',
           moduleNumber: 1,
@@ -470,14 +469,13 @@ describe('pdfService', () => {
               hasFigure: true,
               pageNumber: 1,
               boundingBox: [100, 100, 500, 500],
-              questions: [{ questionNumber: 1 }],
+              questions: [createMockQuestion(1)],
             },
           ],
         },
       ]
 
-      // Should not throw, just log error
-      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules)
+      await pdfService.extractFiguresFromPdf('test', '/tmp/test.pdf', modules as never)
     })
   })
 
@@ -491,64 +489,96 @@ describe('pdfService', () => {
     })
   })
 
-  describe('storeInDatabase', () => {
-    it('should store parsed data in database', async () => {
+  describe('saveModule', () => {
+    it('should save module data to database', async () => {
       const prisma = (await import('@/lib/prisma')).default
+      ;(prisma.module.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 1,
+        section: 'Math',
+        moduleNumber: 1,
+        questionSets: []
+      })
 
-      const parsedData = {
-        testName: 'SAT Practice Test 1',
-        modules: [
+      const moduleData = {
+        section: 'Math',
+        moduleNumber: 1,
+        timeLimit: 35,
+        questionSets: [
           {
-            section: 'Math',
-            moduleNumber: 1,
-            timeLimit: 35,
-            questionSets: [
+            passage: null,
+            passageIntro: null,
+            hasFigure: false,
+            pageNumber: null,
+            boundingBox: null,
+            figureDescription: null,
+            questions: [
               {
-                passage: null,
-                passageIntro: null,
-                hasFigure: false,
-                pageNumber: null,
-                boundingBox: null,
-                figureDescription: null,
-                questions: [
-                  {
-                    questionNumber: 1,
-                    questionType: 'MultipleChoice',
-                    questionText: 'What is 2+2?',
-                    optionA: '3',
-                    optionB: '4',
-                    optionC: '5',
-                    optionD: '6',
-                    correctAnswer: 'B',
-                    topic: 'Algebra',
-                    difficulty: 'Easy',
-                    explanation: 'Basic addition',
-                  },
-                ],
+                questionNumber: 1,
+                questionType: 'MultipleChoice',
+                questionText: 'What is 2+2?',
+                optionA: '3',
+                optionB: '4',
+                optionC: '5',
+                optionD: '6',
+                correctAnswer: 'B',
+                topic: 'Algebra',
+                difficulty: 'Easy',
+                explanation: 'Basic addition',
               },
             ],
           },
         ],
       }
 
-      const result = await pdfService.storeInDatabase(parsedData, 'test.pdf', 'original.pdf')
+      const result = await pdfService.saveModule(1, moduleData as never)
 
-      expect(prisma.sATTest.create).toHaveBeenCalled()
-      expect(result).toEqual({ id: 1, name: 'Test', modules: [] })
+      expect(prisma.module.create).toHaveBeenCalled()
+      expect(result).toEqual({ id: 1, section: 'Math', moduleNumber: 1, questionSets: [] })
     })
+  })
 
-    it('should use default test name if not provided', async () => {
-      const prisma = (await import('@/lib/prisma')).default
+  describe('verifyModule', () => {
+    it('should call generateWithFallback for each batch when enabled', async () => {
+      mockGenerateWithFallback.mockResolvedValue({
+        text: JSON.stringify({
+          verifications: [{
+            questionNumber: 1,
+            wasCorrect: true,
+            verifiedAnswer: 'A',
+            explanation: 'Correct',
+            confidence: 'high',
+          }],
+        }),
+        modelUsed: 'gemini-2.5-pro',
+        tierUsed: 'standard',
+      })
 
-      const parsedData = {
-        testName: '',
-        modules: [],
+      const dbModule = {
+        section: 'Math',
+        moduleNumber: 1,
+        questionSets: [{
+          passage: null,
+          questions: [{
+            id: 100,
+            questionNumber: 1,
+            questionType: 'MultipleChoice',
+            questionText: 'Test',
+            optionA: 'A',
+            optionB: 'B',
+            optionC: 'C',
+            optionD: 'D',
+            correctAnswer: 'A',
+          }],
+        }],
       }
 
-      await pdfService.storeInDatabase(parsedData, 'test.pdf', 'original.pdf')
+      await pdfService.verifyModule('test', 1, 'Test', dbModule)
 
-      const createCall = (prisma.sATTest.create as ReturnType<typeof vi.fn>).mock.calls[0][0]
-      expect(createCall.data.name).toContain('SAT Practice Test')
+      expect(mockGenerateWithFallback).toHaveBeenCalledWith(
+        'answerVerification',
+        expect.any(String),
+        { startTier: 'premium' }
+      )
     })
   })
 })

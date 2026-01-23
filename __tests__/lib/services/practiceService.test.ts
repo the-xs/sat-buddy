@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Use vi.hoisted to create mock functions that are available during vi.mock hoisting
-const { mockPrisma, mockGenerateContent } = vi.hoisted(() => ({
+const { mockPrisma, mockGenerateWithFallback } = vi.hoisted(() => ({
   mockPrisma: {
     practiceQuestion: {
       create: vi.fn(),
@@ -11,21 +10,15 @@ const { mockPrisma, mockGenerateContent } = vi.hoisted(() => ({
       groupBy: vi.fn(),
     },
   },
-  mockGenerateContent: vi.fn(),
+  mockGenerateWithFallback: vi.fn(),
 }))
 
 vi.mock('@/lib/prisma', () => ({
   default: mockPrisma,
 }))
 
-vi.mock('@google/generative-ai', () => ({
-  GoogleGenerativeAI: class {
-    getGenerativeModel() {
-      return {
-        generateContent: mockGenerateContent,
-      }
-    }
-  },
+vi.mock('@/lib/gemini/client', () => ({
+  generateWithFallback: mockGenerateWithFallback,
 }))
 
 // Import after mocks are set up
@@ -50,10 +43,10 @@ describe('practiceService', () => {
         explanation: 'Solve: $2x = 8$, so $x = 4$',
       }
 
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => JSON.stringify(mockQuestionData),
-        },
+      mockGenerateWithFallback.mockResolvedValue({
+        text: JSON.stringify(mockQuestionData),
+        modelUsed: 'gemini-2.5-pro',
+        tierUsed: 'standard',
       })
 
       mockPrisma.practiceQuestion.create.mockResolvedValue({
@@ -90,10 +83,10 @@ describe('practiceService', () => {
         explanation: 'The main idea is...',
       }
 
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => '```json\n' + JSON.stringify(mockQuestionData) + '\n```',
-        },
+      mockGenerateWithFallback.mockResolvedValue({
+        text: JSON.stringify(mockQuestionData),
+        modelUsed: 'gemini-2.5-pro',
+        tierUsed: 'standard',
       })
 
       mockPrisma.practiceQuestion.create.mockResolvedValue({
@@ -121,10 +114,10 @@ describe('practiceService', () => {
         explanation: 'Grammar rule...',
       }
 
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => '```\n' + JSON.stringify(mockQuestionData) + '\n```',
-        },
+      mockGenerateWithFallback.mockResolvedValue({
+        text: '```json\n' + JSON.stringify(mockQuestionData) + '\n```',
+        modelUsed: 'gemini-2.5-pro',
+        tierUsed: 'standard',
       })
 
       mockPrisma.practiceQuestion.create.mockResolvedValue({
@@ -149,10 +142,10 @@ describe('practiceService', () => {
         explanation: 'Explanation',
       }
 
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => JSON.stringify(mockQuestionData),
-        },
+      mockGenerateWithFallback.mockResolvedValue({
+        text: JSON.stringify(mockQuestionData),
+        modelUsed: 'gemini-2.5-pro',
+        tierUsed: 'standard',
       })
 
       mockPrisma.practiceQuestion.create.mockResolvedValue({
@@ -300,10 +293,10 @@ describe('practiceService', () => {
         explanation: '2+2=4',
       }
 
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => 'Detailed explanation of why B is correct...',
-        },
+      mockGenerateWithFallback.mockResolvedValue({
+        text: 'Detailed explanation of why B is correct...',
+        modelUsed: 'gemini-2.5-pro',
+        tierUsed: 'standard',
       })
 
       mockPrisma.practiceQuestion.update.mockResolvedValue({})
@@ -326,10 +319,10 @@ describe('practiceService', () => {
         explanation: '2+2=4',
       }
 
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => 'Explanation text',
-        },
+      mockGenerateWithFallback.mockResolvedValue({
+        text: 'Explanation text',
+        modelUsed: 'gemini-2.5-pro',
+        tierUsed: 'standard',
       })
 
       mockPrisma.practiceQuestion.update.mockResolvedValue({})
@@ -355,10 +348,10 @@ describe('practiceService', () => {
         explanation: '2+2=4',
       }
 
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => 'Explanation text',
-        },
+      mockGenerateWithFallback.mockResolvedValue({
+        text: 'Explanation text',
+        modelUsed: 'gemini-2.5-pro',
+        tierUsed: 'standard',
       })
 
       await practiceService.explainAnswer(null, questionData, 'A')

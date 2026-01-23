@@ -1,8 +1,5 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import prisma from '@/lib/prisma';
-
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+import { generateWithFallback } from '@/lib/gemini/client';
 
 interface QuestionData {
     category: string;
@@ -17,10 +14,7 @@ interface QuestionData {
 }
 
 export const practiceService = {
-    // Generate a random SAT question using Gemini and save to database
     async generateQuestion(category = 'random', userId?: string) {
-        const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
-
         const categoryPrompt = category === 'random'
             ? 'Choose randomly from Math, Reading Comprehension, or Writing & Language'
             : category;
@@ -60,10 +54,9 @@ export const practiceService = {
 
 Return ONLY valid JSON. No markdown code fences, no conversation.`;
 
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text().trim();
+        const { text: responseText } = await generateWithFallback('practiceGeneration', prompt);
 
-        let jsonText = responseText;
+        let jsonText = responseText.trim();
         if (jsonText.startsWith('```json')) {
             jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?$/g, '');
         } else if (jsonText.startsWith('```')) {
@@ -119,10 +112,7 @@ Return ONLY valid JSON. No markdown code fences, no conversation.`;
         };
     },
 
-    // Get detailed explanation from Gemini and save to database
     async explainAnswer(questionId: number | null, questionData: QuestionData, userAnswer: string) {
-        const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
-
         const prompt = `You are an expert SAT tutor. Explain why the correct answer is correct and why the other options are wrong.
 
 **Question**: ${questionData.question}
@@ -147,18 +137,18 @@ Example: $\\frac{x+1}{2}$, $x^2$, $\\sqrt{x}$
 
 Be concise but thorough. Write in a friendly, encouraging tone.`;
 
-        const result = await model.generateContent(prompt);
-        const explanation = result.response.text().trim();
+        const { text: explanation } = await generateWithFallback('explanations', prompt);
 
-        // Save explanation to database
+        const trimmedExplanation = explanation.trim();
+
         if (questionId) {
             await prisma.practiceQuestion.update({
                 where: { id: questionId },
-                data: { explanation }
+                data: { explanation: trimmedExplanation }
             });
         }
 
-        return { explanation };
+        return { explanation: trimmedExplanation };
     },
 
     // Get practice history

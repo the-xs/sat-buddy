@@ -284,3 +284,46 @@ model PracticeQuestion {
   @@index([userId])
   @@map("practice_questions")
 }
+
+// ============================================
+// AI ANSWER VERIFICATION LOGS
+// ============================================
+
+// Logs answer corrections made during PDF parsing verification
+model AnswerVerificationLog {
+  id               Int       @id @default(autoincrement())
+
+  // Reference to the test being processed
+  testId           Int?      @map("test_id")
+  testName         String?   @map("test_name")
+
+  // Question identification
+  section          String    // "ReadingWriting" or "Math"
+  moduleNumber     Int       @map("module_number")
+  questionNumber   Int       @map("question_number")
+  questionText     String    @map("question_text") @db.Text
+
+  // Answer comparison
+  originalAnswer   String    @map("original_answer") @db.Text
+  verifiedAnswer   String    @map("verified_answer") @db.Text
+  wasCorrect       Boolean   @map("was_correct")
+
+  // Verification details
+  explanation      String?   @db.Text
+  confidence       String?   // "high", "medium", "low"
+
+  // Model info
+  modelUsed        String    @map("model_used")
+  tierUsed         String    @map("tier_used")
+  thinkingBudget   Int?      @map("thinking_budget")
+
+  // Timing
+  processingTimeMs Int?      @map("processing_time_ms")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@index([testId])
+  @@index([section])
+  @@index([wasCorrect])
+  @@index([createdAt])
+  @@map("answer_verification_logs")
+}

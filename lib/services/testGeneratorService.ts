@@ -1,7 +1,5 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import prisma from '@/lib/prisma';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+import { generateWithFallback } from '@/lib/gemini/client';
 
 // In-memory progress storage for async generation
 const progressMap = new Map<string, {
@@ -286,10 +284,8 @@ export const testGeneratorService = {
         topic: string,
         questionCount: number,
         difficulties: string[],
-        includePassage: boolean
+        _includePassage: boolean
     ): Promise<GeneratedQuestionSet> {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
         const isRW = section === 'ReadingWriting';
         const difficultyList = difficulties.join(', ');
 
@@ -301,10 +297,9 @@ export const testGeneratorService = {
                 ? this.getRWPrompt(topic, questionCount, difficultyList)
                 : this.getMathPrompt(topic, questionCount, difficultyList);
 
-            const result = await model.generateContent(prompt);
-            const responseText = result.response.text().trim();
+            const { text: responseText } = await generateWithFallback('testGeneration', prompt);
 
-            let jsonText = responseText;
+            let jsonText = responseText.trim();
             if (jsonText.startsWith('```json')) {
                 jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?$/g, '');
             } else if (jsonText.startsWith('```')) {

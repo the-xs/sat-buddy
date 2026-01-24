@@ -725,8 +725,8 @@ Return ONLY valid JSON. No conversational text.`;
                 setIndexToImageIndex.set(setIndex, idx + 1);
             });
 
-            // Step 3: Build prompt (imageIndex mapping will be added in Task 4)
-            const prompt = this.buildVerificationPrompt(batch, section);
+            // Step 3: Build prompt with imageIndex mapping
+            const prompt = this.buildVerificationPrompt(batch, section, setIndexToImageIndex);
 
             // Step 4: Build multimodal or text-only content
             let contents: ContentListUnion;
@@ -807,20 +807,26 @@ Return ONLY valid JSON. No conversational text.`;
         }
     },
 
-    buildVerificationPrompt(batch: QuestionForVerification[], section: string): string {
-        const questionsJson = batch.map(q => ({
-            questionNumber: q.questionNumber,
-            questionText: q.questionText,
-            questionType: q.questionType,
-            options: q.questionType === 'MultipleChoice' ? {
-                A: q.optionA,
-                B: q.optionB,
-                C: q.optionC,
-                D: q.optionD
-            } : null,
-            passage: q.passage || null,
-            proposedAnswer: q.correctAnswer
-        }));
+    buildVerificationPrompt(batch: QuestionForVerification[], section: string, setIndexToImageIndex?: Map<number, number>): string {
+        const questionsJson = batch.map(q => {
+            const imageIndex = setIndexToImageIndex?.get(q.setIndex) ?? null;
+            return {
+                questionNumber: q.questionNumber,
+                questionText: q.questionText,
+                questionType: q.questionType,
+                options: q.questionType === 'MultipleChoice' ? {
+                    A: q.optionA,
+                    B: q.optionB,
+                    C: q.optionC,
+                    D: q.optionD
+                } : null,
+                passage: q.passage || null,
+                proposedAnswer: q.correctAnswer,
+                hasFigure: q.hasFigure ?? false,
+                figureCaption: q.figureCaption ?? null,
+                imageIndex: imageIndex
+            };
+        });
 
         return `You are an expert SAT question validator. Think very carefully and deeply about each question. Take your time to reason through every step.
 
@@ -846,6 +852,20 @@ For each question:
 5. Determine the correct answer with high confidence
 6. Compare with the proposed answer
 7. If different, explain why the proposed answer is wrong and yours is correct
+
+**FOR QUESTIONS WITH FIGURES (imageIndex > 0):**
+- Questions with imageIndex > 0 have an associated image provided above.
+- Image #1 is the first image, Image #2 is the second, etc.
+- Questions with the same imageIndex share the same figure.
+- If hasFigure is true but imageIndex is null, the image could not be extracted - use figureCaption and context clues.
+
+**When analyzing graphs/charts (CRITICAL):**
+1. READ THE LEGEND FIRST: Identify what each color/pattern/shading represents
+2. MATCH BARS TO LEGEND: For each bar, CAREFULLY identify its visual style and match to the legend
+3. READ Y-AXIS VALUES: For each bar, read its height from the y-axis scale
+4. DOUBLE-CHECK: Verify your color/pattern matching is correct - this is the #1 source of errors
+
+Common mistake to AVOID: Swapping which bar represents which category (e.g., confusing "trade policy" bars with "general economic policy" bars)
 
 **${section} Questions to verify:**
 ${JSON.stringify(questionsJson, null, 2)}

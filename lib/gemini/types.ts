@@ -1,12 +1,7 @@
-/**
- * Gemini AI Type Definitions
- * Centralized types for model configuration, thinking modes, and verification
- */
+import { ThinkingLevel } from '@google/genai';
 
-// Model tier for budget-based switching
 export type ModelTier = 'premium' | 'standard' | 'budget';
 
-// Use cases that require different model configurations
 export type UseCase =
   | 'pdfParsing'
   | 'answerVerification'
@@ -14,21 +9,16 @@ export type UseCase =
   | 'explanations'
   | 'testGeneration';
 
-// Thinking configuration - supports both Gemini 2.5 and 3 styles
-export interface ThinkingConfig {
-  // For Gemini 2.5 models - fine-grained token budget
+export interface LocalThinkingConfig {
   thinkingBudget?: number;
-  // For Gemini 3 models - level-based control
-  thinkingLevel?: 'low' | 'high' | 'minimal' | 'medium';
+  thinkingLevel?: ThinkingLevel;
 }
 
-// Model preset with optional thinking configuration
 export interface ModelPreset {
   model: string;
-  thinking?: ThinkingConfig;
+  thinking?: LocalThinkingConfig;
 }
 
-// Result of a single question verification
 export interface VerificationResult {
   questionNumber: number;
   originalAnswer: string;
@@ -38,7 +28,6 @@ export interface VerificationResult {
   confidence: 'high' | 'medium' | 'low';
 }
 
-// Batch verification response from Gemini
 export interface BatchVerificationResponse {
   verifications: Array<{
     questionNumber: number;
@@ -49,14 +38,12 @@ export interface BatchVerificationResponse {
   }>;
 }
 
-// Result of generateWithFallback
 export interface GenerationResult {
   text: string;
   modelUsed: string;
   tierUsed: ModelTier;
 }
 
-// File upload result from Gemini Files API
 export interface FileUploadResult {
   name: string;
   uri: string;
@@ -64,9 +51,8 @@ export interface FileUploadResult {
   state: 'PROCESSING' | 'ACTIVE' | 'FAILED';
 }
 
-// Question data for verification batch
 export interface QuestionForVerification {
-  questionId: number; // Database ID for updating
+  questionId: number;
   setIndex: number;
   qIndex: number;
   questionNumber: number;
@@ -78,4 +64,7 @@ export interface QuestionForVerification {
   optionD?: string | null;
   correctAnswer: string;
   passage?: string | null;
+  hasFigure?: boolean;
+  figureCaption?: string | null;
+  figureData?: string | null;
 }

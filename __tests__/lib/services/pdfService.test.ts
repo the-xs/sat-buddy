@@ -558,6 +558,8 @@ describe('pdfService', () => {
         moduleNumber: 1,
         questionSets: [{
           passage: null,
+          hasFigure: false,
+          figureCaption: null,
           questions: [{
             id: 100,
             questionNumber: 1,
@@ -581,4 +583,154 @@ describe('pdfService', () => {
       )
     })
   })
+
+  describe('verifyBatch multimodal content', () => {
+    beforeEach(() => {
+      mockGenerateWithFallback.mockReset();
+      mockGenerateWithFallback.mockResolvedValue({
+        text: JSON.stringify({ verifications: [] }),
+        modelUsed: 'gemini-2.5-flash',
+        tierUsed: 'standard'
+      });
+    });
+
+    it('should send multimodal content with deduped images when batch has figures', async () => {
+      // Call verifyBatch directly with test data
+      // Using dummy fileId, testId, etc. since DB operations are mocked
+      await pdfService.verifyBatch(
+        'test-file-id',
+        1,  // testId
+        'Test',  // testName
+        'ReadingWriting',  // section
+        1,  // moduleNumber
+        [
+          {
+            questionId: 1, setIndex: 0, qIndex: 0, questionNumber: 1,
+            questionText: 'Q1', questionType: 'MultipleChoice',
+            optionA: 'A', optionB: 'B', optionC: 'C', optionD: 'D',
+            correctAnswer: 'A', passage: null,
+            hasFigure: true, figureCaption: 'Graph 1', figureData: 'base64img1'
+          },
+          {
+            questionId: 2, setIndex: 0, qIndex: 1, questionNumber: 2,
+            questionText: 'Q2', questionType: 'MultipleChoice',
+            optionA: 'A', optionB: 'B', optionC: 'C', optionD: 'D',
+            correctAnswer: 'B', passage: null,
+            hasFigure: true, figureCaption: 'Graph 1', figureData: 'base64img1' // Same set
+          },
+          {
+            questionId: 3, setIndex: 1, qIndex: 0, questionNumber: 3,
+            questionText: 'Q3', questionType: 'MultipleChoice',
+            optionA: 'A', optionB: 'B', optionC: 'C', optionD: 'D',
+            correctAnswer: 'C', passage: null,
+            hasFigure: true, figureCaption: 'Graph 2', figureData: 'base64img2' // Different set
+          }
+        ]
+      );
+
+      // Assert generateWithFallback was called
+      expect(mockGenerateWithFallback).toHaveBeenCalledTimes(1);
+      
+      // Get the contents argument (2nd arg)
+      const contents = mockGenerateWithFallback.mock.calls[0][1];
+      
+      // Should be an array (multimodal) with 2 images + 1 text (deduped from 3 questions to 2 sets)
+      expect(Array.isArray(contents)).toBe(true);
+      expect(contents).toHaveLength(3); // 2 images + 1 text
+      
+      // First two should be inlineData (images)
+      expect(contents[0]).toHaveProperty('inlineData');
+      expect(contents[0].inlineData.mimeType).toBe('image/png');
+      expect(contents[1]).toHaveProperty('inlineData');
+      
+      // Last should be text
+      expect(contents[2]).toHaveProperty('text');
+    });
+
+    it('should use plain string content when batch has no figures', async () => {
+      await pdfService.verifyBatch(
+        'test-file-id', 1, 'Test', 'Math', 1,
+        [{
+          questionId: 1, setIndex: 0, qIndex: 0, questionNumber: 1,
+          questionText: 'Q1', questionType: 'MultipleChoice',
+          optionA: 'A', optionB: 'B', optionC: 'C', optionD: 'D',
+          correctAnswer: 'A', passage: null,
+          hasFigure: false, figureCaption: null, figureData: null
+        }]
+      );
+
+      const contents = mockGenerateWithFallback.mock.calls[0][1];
+      
+      // Should be a plain string for text-only batches
+      expect(typeof contents).toBe('string');
+    });
+
+    it('should sort images by minimum question number in set', async () => {
+      await pdfService.verifyBatch(
+        'test-file-id', 1, 'Test', 'ReadingWriting', 1,
+        [
+          // Set 1 has Q5 (higher number)
+          { questionId: 1, setIndex: 1, qIndex: 0, questionNumber: 5, questionText: 'Q5', questionType: 'MultipleChoice', optionA: 'A', optionB: 'B', optionC: 'C', optionD: 'D', correctAnswer: 'A', passage: null, hasFigure: true, figureCaption: null, figureData: 'imgB' },
+          // Set 0 has Q1 (lower number) - should be first image
+          { questionId: 2, setIndex: 0, qIndex: 0, questionNumber: 1, questionText: 'Q1', questionType: 'MultipleChoice', optionA: 'A', optionB: 'B', optionC: 'C', optionD: 'D', correctAnswer: 'B', passage: null, hasFigure: true, figureCaption: null, figureData: 'imgA' },
+        ]
+      );
+
+      const contents = mockGenerateWithFallback.mock.calls[0][1];
+      
+      // imgA (Q1, set 0) should be first, imgB (Q5, set 1) should be second
+      expect(contents[0].inlineData.data).toBe('imgA');
+      expect(contents[1].inlineData.data).toBe('imgB');
+    });
+  });
+
+  describe('buildVerificationPrompt with imageIndex', () => {
+    it('should include imageIndex in questionsJson when mapping provided', () => {
+      const batch = [{
+        questionId: 1, setIndex: 0, qIndex: 0, questionNumber: 1,
+        questionText: 'Test question', questionType: 'MultipleChoice',
+        optionA: 'A', optionB: 'B', optionC: 'C', optionD: 'D',
+        correctAnswer: 'A', passage: null,
+        hasFigure: true, figureCaption: 'A bar graph', figureData: 'base64data'
+      }];
+      const mapping = new Map([[0, 1]]);
+      
+      const prompt = pdfService.buildVerificationPrompt(batch, 'ReadingWriting', mapping);
+      
+      expect(prompt).toContain('"imageIndex": 1');
+      expect(prompt).toContain('"hasFigure": true');
+      expect(prompt).toContain('READ THE LEGEND FIRST');
+    });
+
+    it('should set imageIndex to null when setIndex not in mapping', () => {
+      const batch = [{
+        questionId: 1, setIndex: 0, qIndex: 0, questionNumber: 1,
+        questionText: 'Test question', questionType: 'MultipleChoice',
+        optionA: 'A', optionB: 'B', optionC: 'C', optionD: 'D',
+        correctAnswer: 'A', passage: null,
+        hasFigure: true, figureCaption: 'A bar graph', figureData: null  // No image data
+      }];
+      const mapping = new Map<number, number>();  // Empty mapping
+      
+      const prompt = pdfService.buildVerificationPrompt(batch, 'ReadingWriting', mapping);
+      
+      expect(prompt).toContain('"imageIndex": null');
+      expect(prompt).toContain('"hasFigure": true');
+    });
+
+    it('should include graph instructions in prompt', () => {
+      const batch = [{
+        questionId: 1, setIndex: 0, qIndex: 0, questionNumber: 1,
+        questionText: 'Test', questionType: 'MultipleChoice',
+        optionA: 'A', optionB: 'B', optionC: 'C', optionD: 'D',
+        correctAnswer: 'A', passage: null,
+        hasFigure: false, figureCaption: null, figureData: null
+      }];
+      
+      const prompt = pdfService.buildVerificationPrompt(batch, 'Math', undefined);
+      
+      expect(prompt).toContain('FOR QUESTIONS WITH FIGURES');
+      expect(prompt).toContain('READ THE LEGEND FIRST');
+    });
+  });
 })

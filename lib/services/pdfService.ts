@@ -649,7 +649,7 @@ Return ONLY valid JSON. No conversational text.`;
         fileId: string,
         testId: number,
         testName: string,
-        dbModule: { section: string; moduleNumber: number; questionSets: Array<{ passage: string | null; questions: Array<{ id: number; questionNumber: number; questionText: string; questionType: string; optionA: string | null; optionB: string | null; optionC: string | null; optionD: string | null; correctAnswer: string }> }> }
+        dbModule: { section: string; moduleNumber: number; questionSets: Array<{ passage: string | null; hasFigure?: boolean; figureData?: string | null; figureCaption?: string | null; questions: Array<{ id: number; questionNumber: number; questionText: string; questionType: string; optionA: string | null; optionB: string | null; optionC: string | null; optionD: string | null; correctAnswer: string }> }> }
     ) {
         const batchSize = getVerificationBatchSize();
         const questions: QuestionForVerification[] = [];
@@ -668,7 +668,10 @@ Return ONLY valid JSON. No conversational text.`;
                     optionC: q.optionC,
                     optionD: q.optionD,
                     correctAnswer: q.correctAnswer,
-                    passage: set.passage
+                    passage: set.passage,
+                    hasFigure: set.hasFigure ?? false,
+                    figureData: set.figureData ?? null,
+                    figureCaption: set.figureCaption ?? null
                 });
             });
         });
@@ -783,9 +786,22 @@ For each question:
 1. Read the question, passage (if any), and ALL options extremely carefully
 2. Think hard about the problem - work through it step by step, showing your reasoning
 3. For math: verify calculations twice. For reading: re-read relevant passages
-4. Determine the correct answer with high confidence
-5. Compare with the proposed answer
-6. If different, explain why the proposed answer is wrong and yours is correct
+4. For Standard English/grammar questions:
+   - Mentally insert EACH option into the blank and read the FULL sentence
+   - **VERB FORMS**: Identify what grammatical role the blank plays:
+     * Is it a MAIN VERB continuing a series? (needs same tense as other verbs)
+     * Is it an INFINITIVE expressing purpose? ("to + verb" = in order to)
+     * Is it a PARTICIPLE modifying something? ("-ing" or "-ed" form)
+   - **SAT RULE - INFINITIVE vs PARTICIPLE**:
+     * When a blank follows a completed action and introduces an outcome, and BOTH infinitive ("to + verb") AND participle ("-ing") seem possible:
+     * CHOOSE INFINITIVE if the outcome represents the PURPOSE or GOAL of the action
+     * The SAT tests this pattern frequently: "Subject did X _____ Y" where Y is the intended result
+     * Example: "Scientists modified the gene to create a cure" (NOT "creating") - the cure was the PURPOSE
+   - **PARALLEL STRUCTURE**: Verbs connected by "and" should match in form, BUT check if the blank is actually part of the parallel series or serves a different function (like expressing purpose)
+   - Check punctuation and sentence boundaries
+5. Determine the correct answer with high confidence
+6. Compare with the proposed answer
+7. If different, explain why the proposed answer is wrong and yours is correct
 
 **${section} Questions to verify:**
 ${JSON.stringify(questionsJson, null, 2)}

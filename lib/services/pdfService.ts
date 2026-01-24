@@ -11,6 +11,7 @@ import {
 } from '@/lib/gemini/client';
 import { getVerificationBatchSize, isVerificationEnabled } from '@/lib/gemini/config';
 import { QuestionForVerification, BatchVerificationResponse } from '@/lib/gemini/types';
+import type { ContentListUnion } from '@google/genai';
 
 // Upload directories - use /tmp for serverless or local uploads folder
 const UPLOADS_DIR = process.env.NODE_ENV === 'production'
@@ -699,10 +700,53 @@ Return ONLY valid JSON. No conversational text.`;
         const startTime = Date.now();
 
         try {
+            // Step 1: Dedupe figures by setIndex, track min question number per set
+            const setFigures = new Map<number, { figureData: string; minQuestionNumber: number }>();
+            for (const q of batch) {
+                if (q.figureData) {
+                    const existing = setFigures.get(q.setIndex);
+                    if (!existing) {
+                        setFigures.set(q.setIndex, {
+                            figureData: q.figureData,
+                            minQuestionNumber: q.questionNumber
+                        });
+                    } else if (q.questionNumber < existing.minQuestionNumber) {
+                        existing.minQuestionNumber = q.questionNumber;
+                    }
+                }
+            }
+
+            // Step 2: Sort by minQuestionNumber, create setIndex -> imageIndex mapping (1-based)
+            const sortedFigures = Array.from(setFigures.entries())
+                .sort((a, b) => a[1].minQuestionNumber - b[1].minQuestionNumber);
+            
+            const setIndexToImageIndex = new Map<number, number>();
+            sortedFigures.forEach(([setIndex], idx) => {
+                setIndexToImageIndex.set(setIndex, idx + 1);
+            });
+
+            // Step 3: Build prompt (imageIndex mapping will be added in Task 4)
             const prompt = this.buildVerificationPrompt(batch, section);
+
+            // Step 4: Build multimodal or text-only content
+            let contents: ContentListUnion;
+            if (sortedFigures.length > 0) {
+                // Multimodal: images first (sorted order), then text prompt
+                const parts: Array<{text: string} | {inlineData: {mimeType: string, data: string}}> = [];
+                for (const [, figData] of sortedFigures) {
+                    // figureData is raw base64 (no data URI prefix)
+                    parts.push({ inlineData: { mimeType: 'image/png', data: figData.figureData } });
+                }
+                parts.push({ text: prompt });
+                contents = createUserContent(parts);
+            } else {
+                // Text-only: plain string (backward compatible)
+                contents = prompt;
+            }
+
             const { text, modelUsed, tierUsed } = await generateWithFallback(
                 'answerVerification',
-                prompt,
+                contents,
                 { startTier: 'premium' }
             );
 

@@ -939,7 +939,89 @@ For each question:
      * Read carefully: "What is the value of a?" means find a, not b or ab
      * When given ab = k and you found b, solve a = k/b
      * Always substitute back to verify your answer matches all given conditions
-7. For Standard English/grammar questions:
+7. For Math questions with systems of equations (CRITICAL):
+   - **ORDERED PAIR ANSWERS**: Solution is (x, y) satisfying BOTH equations
+     * Accept formats: (2, -1) or "x=2, y=-1" or ordered pair notation
+     * Verify by substitution: plug (x, y) into BOTH original equations
+     * Order matters: (x, y) ≠ (y, x) - check which variable is which
+     * Example: If answer is (3, -2), verify by substituting x=3 and y=-2 into both equations
+   - **SOLVING METHODS**:
+     * Substitution: solve one equation for a variable, substitute into the other
+     * Elimination: multiply equations to make coefficients match, then add/subtract
+     * Always verify the final answer in BOTH original equations
+   - **SPECIAL CASES**:
+     * No solution: inconsistent system (parallel lines, same slope but different y-intercepts)
+     * Infinitely many solutions: dependent system (same line, equations are equivalent)
+   - **COMMON MISTAKES TO AVOID**:
+     * Solving only one equation and stopping (must solve for BOTH variables)
+     * Reporting only x or only y instead of the ordered pair
+     * Swapping x and y values in the answer
+     * Sign errors during elimination (especially when subtracting)
+     * Not checking the solution in both equations (catches arithmetic errors)
+8. For Math questions with rational expressions/equations (CRITICAL):
+   - **DOMAIN RESTRICTIONS**: Find excluded values where denominators equal zero
+     * Before solving, identify restrictions: if (x-2) in denominator, then x ≠ 2
+     * Track ALL restrictions from ALL denominators in the problem
+     * Restrictions apply even after simplification!
+   - **SOLVING RATIONAL EQUATIONS**:
+     * Method 1: Cross-multiply (for single fraction on each side)
+     * Method 2: Multiply through by LCD to clear denominators
+     * After solving, CHECK each candidate solution in the ORIGINAL equation
+     * REJECT any solution that makes ANY denominator zero (extraneous solution)
+   - **SIMPLIFYING RATIONAL EXPRESSIONS**:
+     * Factor numerator and denominator completely
+     * Cancel only common FACTORS (not terms)
+     * Domain restrictions remain even after canceling
+     * Example: (x²-4)/(x-2) = (x+2)(x-2)/(x-2) = x+2, but x ≠ 2 still applies
+   - **COMMON MISTAKES TO AVOID**:
+     * Accepting extraneous solutions that make a denominator zero
+     * Forgetting original domain restrictions after canceling factors
+     * Canceling terms instead of factors: (x+3)/(x+5) ≠ 3/5
+     * Not checking solutions in the ORIGINAL equation (before multiplying through)
+     * Losing negative signs when cross-multiplying
+9. For Math questions with circles (CRITICAL):
+   - **STANDARD FORM**: (x - h)² + (y - k)² = r²
+     * Center: (h, k) - watch the MINUS signs in the equation!
+     * Radius: r (not r², not diameter!)
+     * Example: (x-3)² + (y+2)² = 16 has center (3, -2) and radius 4
+   - **WRITING EQUATION FROM CENTER AND RADIUS**:
+     * Given center (h, k) and radius r, write: (x - h)² + (y - k)² = r²
+     * Sign rule: if center is (3, -2), equation has (x-3)² and (y-(-2))² = (y+2)²
+     * Right side is r², not r: if radius is 4, right side is 16
+   - **FINDING CENTER AND RADIUS FROM EQUATION**:
+     * If in standard form: read off (h, k) and r directly (watch signs!)
+     * If expanded (x² + 6x + y² - 4y = 12), complete the square to get standard form
+     * Center coordinates have OPPOSITE sign from equation: (x-3) means h=3, (y+2) means k=-2
+   - **COMMON MISTAKES TO AVOID**:
+     * Sign errors: center (3, -2) written as (x+3)² instead of (x-3)²
+     * Confusing r with r²: if equation has =16, radius is 4, not 16
+     * Confusing radius with diameter (radius = diameter/2)
+     * Not completing the square when equation is in expanded form
+     * Forgetting to apply opposite-sign rule for center coordinates
+10. For Math questions with statistics from tables/lists (CRITICAL):
+    - **MEAN (AVERAGE)**: Sum of all values ÷ count
+      * Add ALL values (including repeats) and divide by total count
+      * For weighted average: multiply each value by its frequency/weight, sum, then divide by total weight
+      * Example: values 2,3,3,5,7 → mean = (2+3+3+5+7)/5 = 20/5 = 4
+    - **MEDIAN**: Middle value when data is SORTED
+      * MUST sort the data first (ascending or descending)
+      * ODD count: take the exact middle value
+      * EVEN count: take the AVERAGE of the two middle values
+      * Example: 2,3,5,7,9 (odd) → median = 5; 2,3,5,7 (even) → median = (3+5)/2 = 4
+    - **MODE**: Most frequently occurring value(s)
+      * Find value(s) that appear most often
+      * Can have multiple modes (bimodal, multimodal) or no mode
+      * Example: 2,3,3,5,5,7 → modes are 3 and 5 (both appear twice)
+    - **RANGE**: Maximum value - Minimum value
+      * Simple calculation but don't confuse with IQR (interquartile range)
+      * Example: 2,3,5,7,9 → range = 9-2 = 7
+    - **COMMON MISTAKES TO AVOID**:
+      * Computing mean when question asks for median (or vice versa) - read carefully!
+      * Forgetting to SORT data before finding median
+      * For even count median, using one middle value instead of averaging both
+      * Confusing range (max-min) with IQR (Q3-Q1)
+      * Not counting repeated values when computing mean
+11. For Standard English/grammar questions:
    - Mentally insert EACH option into the blank and read the FULL sentence
    - **VERB FORMS**: Identify what grammatical role the blank plays:
      * Is it a MAIN VERB continuing a series? (needs same tense as other verbs)
@@ -958,9 +1040,9 @@ For each question:
       * The result ("a tool") is what they INTENDED to create
     - **PARALLEL STRUCTURE**: Verbs connected by "and" should match in form, BUT check if the blank is actually part of the parallel series or serves a different function (like expressing purpose)
    - Check punctuation and sentence boundaries
-8. Determine the correct answer with high confidence
-9. Compare with the proposed answer
-10. If different, explain why the proposed answer is wrong and yours is correct
+12. Determine the correct answer with high confidence
+13. Compare with the proposed answer
+14. If different, explain why the proposed answer is wrong and yours is correct
 
 **FOR QUESTIONS WITH FIGURES (imageIndex > 0):**
 - Questions with imageIndex > 0 have an associated image provided above.

@@ -898,7 +898,30 @@ For each question:
      * Don't confuse root index with exponent (⁵√(x⁴⁵) = x⁹, not x⁵)
      * When adding fractional exponents, find common denominator: 9 + 1/8 = 72/8 + 1/8 = 73/8
      * For "a + b" questions, calculate BOTH values separately then add
-5. For Standard English/grammar questions:
+5. For Math questions with parabolas/quadratics (CRITICAL):
+   - **VERTEX FORM**: y = a(x - h)² + k where (h, k) is the vertex
+     * From vertex (h, k), write: y = a(x - h)² + k
+     * Expand to standard form: y = ax² + bx + c
+     * Remember: coefficient 'a' determines if parabola opens up (a > 0) or down (a < 0)
+   - **STANDARD FORM TO VERTEX**: For y = ax² + bx + c
+     * Vertex x-coordinate: h = -b/(2a)
+     * Vertex y-coordinate: k = f(h) = a(h)² + b(h) + c
+   - **KEY RELATIONSHIPS**:
+     * If vertex is (h, k): b = -2ah and c = ah² + k
+     * Axis of symmetry: x = h (vertical line through vertex)
+     * If parabola intersects x-axis at two points and vertex has y < 0, then a > 0 (opens upward)
+     * If parabola intersects x-axis at two points and vertex has y > 0, then a < 0 (opens downward)
+   - **"WHICH OF THE FOLLOWING COULD BE" QUESTIONS**:
+     * Work BACKWARDS from each answer choice
+     * Substitute into the relationships to find corresponding 'a' value
+     * Check if 'a' makes sense (positive/negative based on vertex position)
+     * Example: If a + b + c = -12 and b = -18a, c = 81a - 14, solve: a + (-18a) + (81a - 14) = -12
+   - **COMMON MISTAKES TO AVOID**:
+     * Don't confuse vertex (h, k) with standard form coefficients a, b, c
+     * Remember: in vertex form y = a(x - h)² + k, the signs are OPPOSITE (vertex at x = h, not x = -h)
+     * When parabola intersects x-axis twice, check vertex position to determine if a > 0 or a < 0
+     * Always verify your answer by checking if the parabola properties match the problem
+6. For Standard English/grammar questions:
    - Mentally insert EACH option into the blank and read the FULL sentence
    - **VERB FORMS**: Identify what grammatical role the blank plays:
      * Is it a MAIN VERB continuing a series? (needs same tense as other verbs)
@@ -917,9 +940,9 @@ For each question:
       * The result ("a tool") is what they INTENDED to create
     - **PARALLEL STRUCTURE**: Verbs connected by "and" should match in form, BUT check if the blank is actually part of the parallel series or serves a different function (like expressing purpose)
    - Check punctuation and sentence boundaries
-5. Determine the correct answer with high confidence
-6. Compare with the proposed answer
-7. If different, explain why the proposed answer is wrong and yours is correct
+7. Determine the correct answer with high confidence
+8. Compare with the proposed answer
+9. If different, explain why the proposed answer is wrong and yours is correct
 
 **FOR QUESTIONS WITH FIGURES (imageIndex > 0):**
 - Questions with imageIndex > 0 have an associated image provided above.

@@ -579,7 +579,7 @@ describe('pdfService', () => {
       expect(mockGenerateWithFallback).toHaveBeenCalledWith(
         'answerVerification',
         expect.any(String),
-        { startTier: 'premium' }
+        expect.objectContaining({ startTier: 'premium' })
       )
     })
   })
@@ -587,8 +587,13 @@ describe('pdfService', () => {
   describe('verifyBatch multimodal content', () => {
     beforeEach(() => {
       mockGenerateWithFallback.mockReset();
+      // Return non-empty verifications to avoid triggering retry logic
       mockGenerateWithFallback.mockResolvedValue({
-        text: JSON.stringify({ verifications: [] }),
+        text: JSON.stringify({ verifications: [
+          { questionNumber: 1, wasCorrect: true, verifiedAnswer: 'A', explanation: 'Correct', confidence: 'high' },
+          { questionNumber: 2, wasCorrect: true, verifiedAnswer: 'B', explanation: 'Correct', confidence: 'high' },
+          { questionNumber: 3, wasCorrect: true, verifiedAnswer: 'C', explanation: 'Correct', confidence: 'high' },
+        ] }),
         modelUsed: 'gemini-2.5-flash',
         tierUsed: 'standard'
       });

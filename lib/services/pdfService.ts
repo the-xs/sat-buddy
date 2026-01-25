@@ -265,7 +265,11 @@ Extract EVERY question for this specific module, grouped into QUESTION SETS.
 
 **FIGURE HANDLING (at QuestionSet level):**
 - hasFigure: true if the questionSet has a shared figure/chart/table/diagram
-- figureDescription: A detailed description of the figure that would allow someone to recreate it
+- figureDescription: A detailed description of the figure that would allow someone to recreate it:
+  - For COORDINATE PLANE GRAPHS: describe axis ranges, identify key points the line/curve passes through (especially where it crosses axes), and note the general direction/shape
+  - For BAR CHARTS: describe what each bar represents, axis labels, and the legend
+  - For TABLES: describe column/row headers and key data values
+  - For GEOMETRIC FIGURES: describe shapes, labeled measurements, angles, and relationships
 - pageNumber: The page number in the PDF (1-indexed) where this figure is located
 - boundingBox: The precise [ymin, xmin, ymax, xmax] coordinates as normalized values (0-1000)
 
@@ -908,13 +912,28 @@ For each question:
 - Questions with the same imageIndex share the same figure.
 - If hasFigure is true but imageIndex is null, the image could not be extracted - use figureCaption and context clues.
 
-**When analyzing graphs/charts (CRITICAL):**
+**When analyzing bar charts/data graphs (CRITICAL):**
 1. READ THE LEGEND FIRST: Identify what each color/pattern/shading represents
 2. MATCH BARS TO LEGEND: For each bar, CAREFULLY identify its visual style and match to the legend
 3. READ Y-AXIS VALUES: For each bar, read its height from the y-axis scale
 4. DOUBLE-CHECK: Verify your color/pattern matching is correct - this is the #1 source of errors
 
 Common mistake to AVOID: Swapping which bar represents which category (e.g., confusing "trade policy" bars with "general economic policy" bars)
+
+**When analyzing line graphs on coordinate planes (CRITICAL for Math questions):**
+1. IDENTIFY THE Y-INTERCEPT: Find where the line crosses the y-axis (the point where x=0)
+2. FIND TWO CLEAR POINTS: Locate two points on the line that fall exactly on grid intersections
+3. CALCULATE THE SLOPE: slope = rise/run = (y2-y1)/(x2-x1). Count grid squares carefully.
+   - If line goes DOWN from left to right → slope is NEGATIVE
+   - If line goes UP from left to right → slope is POSITIVE
+4. VERIFY STEEPNESS: A slope of -1 means for every 1 unit right, line goes 1 unit down.
+   A slope of -2 means for every 1 unit right, line goes 2 units down (steeper).
+5. MATCH TO EQUATION: Use y = mx + b form where m=slope, b=y-intercept
+
+Common mistakes to AVOID:
+- Confusing slope magnitude: -1 vs -2 look similar but -2 is TWICE as steep
+- Getting slope sign wrong: check if line rises or falls left-to-right
+- Misreading the y-intercept value from the axis
 
 **${section} Questions to verify:**
 ${JSON.stringify(questionsJson, null, 2)}

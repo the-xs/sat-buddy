@@ -897,6 +897,14 @@ CRITICAL: Your entire response must be parseable JSON. Start with { and end with
 
 IMPORTANT: This is a critical verification task. Think step by step. Double-check your work. Consider all possibilities before deciding.
 
+**CRITICAL: BE CONSERVATIVE - DO NOT CHANGE ANSWERS UNLESS 100% CERTAIN**
+- The proposed answer came from initial parsing and is LIKELY CORRECT in most cases
+- Only mark wasCorrect=false if you have ABSOLUTE CERTAINTY the proposed answer is wrong
+- If you're unsure or the question is ambiguous, mark wasCorrect=true (keep original)
+- Changing a correct answer to wrong is WORSE than missing an error
+- You must provide concrete evidence why the original is definitively wrong
+- When in doubt, trust the original answer
+
 For each question:
 1. Read the question, passage (if any), and ALL options extremely carefully
 2. Think hard about the problem - work through it step by step, showing your reasoning
@@ -1065,10 +1073,38 @@ For each question:
       * Example: "Scientists reprogrammed the bacteria to forge a tool" (NOT "forging")
       * The result ("a tool") is what they INTENDED to create
     - **PARALLEL STRUCTURE**: Verbs connected by "and" should match in form, BUT check if the blank is actually part of the parallel series or serves a different function (like expressing purpose)
-   - Check punctuation and sentence boundaries
-12. Determine the correct answer with high confidence
-13. Compare with the proposed answer
-14. If different, explain why the proposed answer is wrong and yours is correct
+    - Check punctuation and sentence boundaries
+12. For Reading comprehension questions ("Which choice best..."):
+    - **EVIDENCE-BASED**: Answer must be DIRECTLY supported by the passage
+      * Don't infer beyond what's explicitly stated
+      * The correct answer often uses similar language to the passage
+      * Wrong answers often make claims not supported by the text
+    - **"BEST" QUESTIONS**: All options may seem partially correct
+      * The BEST answer is the most complete and accurate
+      * Eliminate options that are too narrow, too broad, or off-topic
+      * Check that your choice addresses the SPECIFIC question asked
+    - **QUOTATION QUESTIONS** ("Which quotation most effectively..."):
+      * The quote must DIRECTLY support the claim or point being made
+      * Check that the quote actually says what the question claims it illustrates
+      * Wrong quotes may be related but don't specifically support the claim
+
+13. For "data from graph" questions in Reading/Writing (CRITICAL):
+    - **READ THE GRAPH CAREFULLY**: Even for RW questions, graph data must be accurate
+      * Identify axes, labels, units, and scale
+      * Read values precisely from the graph
+      * Compare multiple data points as needed
+    - **MATCH DATA TO CLAIMS**: The correct answer makes a claim the data supports
+      * Wrong answers often misstate the data or draw wrong conclusions
+      * Check specific years, values, and comparisons mentioned
+      * Verify that increases/decreases/comparisons are accurate
+    - **COMMON WRONG ANSWER PATTERNS**:
+      * Reverses the relationship (says X > Y when Y > X)
+      * Uses wrong time period or data category
+      * Makes accurate statement but doesn't answer the question
+
+14. Determine the correct answer with high confidence
+15. Compare with the proposed answer
+16. If different, explain why the proposed answer is wrong and yours is correct
 
 **FOR QUESTIONS WITH FIGURES (imageIndex > 0):**
 - Questions with imageIndex > 0 have an associated image provided above.
@@ -1101,6 +1137,15 @@ Common mistakes to AVOID:
 
 **${section} Questions to verify:**
 ${JSON.stringify(questionsJson, null, 2)}
+
+**BEFORE MARKING wasCorrect=false, YOU MUST:**
+1. Solve the problem completely yourself
+2. Verify your solution is correct by checking your work
+3. Explain specifically why the proposed answer is WRONG (not just why yours is right)
+4. Consider if there's ANY interpretation where the proposed answer could be correct
+5. Only if you're 100% certain after all checks, mark wasCorrect=false
+
+If you cannot complete all 5 steps with certainty, mark wasCorrect=true.
 
 **Output format (JSON only):**
 {

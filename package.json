@@ -10,7 +10,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "validate-agent-config": "node scripts/validate-agent-config.js"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

@@ -36,3 +36,6 @@ coverage/
 
 # ts build
 *.tsbuildinfo*
+
+# Sisyphus orchestration (runtime state)
+.sisyphus/

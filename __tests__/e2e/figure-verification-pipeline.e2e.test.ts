@@ -20,6 +20,18 @@ const Q13_OPTIONS = {
   D: 'was substantially lower than uncertainty about trade policy in 2005 and substantially higher than uncertainty about trade policy in 2010.',
 };
 
+// Q26 data (text-only punctuation question)
+const Q26_PASSAGE = `Sociologist Alton Okinaka sits on the review board tasked with adding new sites to the Hawai'i Register of Historic Places, which includes Pi'ilanihale Heiau and the 'Ōpaeka'a Road Bridge. Okinaka doesn't make such decisions _______ all historical designations must be approved by a group of nine other experts from the fields of architecture, archaeology, history, and Hawaiian culture.`;
+
+const Q26_QUESTION = `Which choice completes the text so that it conforms to the conventions of Standard English?`;
+
+const Q26_OPTIONS = {
+  A: `single-handedly, however;`,
+  B: `single-handedly; however,`,
+  C: `single-handedly, however,`,
+  D: `single-handedly however`
+};
+
 // Hoisted mock for Prisma only
 const mockPrismaQuestionUpdate = vi.hoisted(() => vi.fn().mockResolvedValue({ id: 13 }));
 const mockPrismaVerificationLogCreate = vi.hoisted(() => vi.fn().mockResolvedValue({ id: 1 }));
@@ -97,6 +109,57 @@ describe.skipIf(SKIP_E2E)('E2E: verifyBatch Pipeline with Real Gemini', () => {
       })
     });
 
-    console.log('✅ verifyBatch correctly identified A was wrong and corrected to D');
-  }, 120000);  // 2 minute timeout for API call
+     console.log('✅ verifyBatch correctly identified A was wrong and corrected to D');
+   }, 120000);  // 2 minute timeout for API call
+
+   it('should correct Q26 from C to A (text-only regression)', async () => {
+     console.log('Calling verifyBatch with Q26 (wrong answer C)...');
+
+     await pdfService.verifyBatch(
+       'e2e-test-file-id',
+       2,  // testId
+       'E2E Test Q26',
+       'ReadingWriting',
+       1,  // moduleNumber
+       [{
+         questionId: 26,
+         setIndex: 0,
+         qIndex: 0,
+         questionNumber: 26,
+         questionText: Q26_QUESTION,
+         questionType: 'MultipleChoice',
+         optionA: Q26_OPTIONS.A,
+         optionB: Q26_OPTIONS.B,
+         optionC: Q26_OPTIONS.C,
+         optionD: Q26_OPTIONS.D,
+         correctAnswer: 'C',  // WRONG - Gemini should correct to A
+         passage: Q26_PASSAGE,
+         hasFigure: false,
+         figureCaption: null,
+         figureData: undefined  // Text-only question
+       }]
+     );
+
+     // Verify correction to A
+     expect(mockPrismaQuestionUpdate).toHaveBeenCalledTimes(1);
+     expect(mockPrismaQuestionUpdate).toHaveBeenCalledWith({
+       where: { id: 26 },
+       data: expect.objectContaining({
+         correctAnswer: 'A'
+       })
+     });
+
+     // Verify logging
+     expect(mockPrismaVerificationLogCreate).toHaveBeenCalledTimes(1);
+     expect(mockPrismaVerificationLogCreate).toHaveBeenCalledWith({
+       data: expect.objectContaining({
+         questionNumber: 26,
+         originalAnswer: 'C',
+         verifiedAnswer: 'A',
+         wasCorrect: false
+       })
+     });
+
+     console.log('✅ verifyBatch correctly identified C was wrong and corrected to A');
+   }, 120000);  // 2 minute timeout for API call
 });

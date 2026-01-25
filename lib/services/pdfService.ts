@@ -892,15 +892,36 @@ Return ONLY valid JSON. No markdown code fences.`;
 
     parseVerificationResponse(text: string): BatchVerificationResponse {
         let jsonText = text.trim();
+        
+        // Step 1: Strip markdown code fences
         if (jsonText.startsWith('```json')) {
             jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?$/g, '');
         } else if (jsonText.startsWith('```')) {
             jsonText = jsonText.replace(/```\n?/g, '').replace(/```\n?$/g, '');
         }
-
+        
+        // Step 2: Try direct parse
         try {
             return JSON.parse(jsonText);
         } catch {
+            // Step 3: Extract JSON from prose using brace matching
+            const firstBrace = jsonText.indexOf('{');
+            const lastBrace = jsonText.lastIndexOf('}');
+            
+            if (firstBrace !== -1 && lastBrace > firstBrace) {
+                const jsonCandidate = jsonText.substring(firstBrace, lastBrace + 1);
+                try {
+                    const parsed = JSON.parse(jsonCandidate);
+                    // Validate structure has verifications array
+                    if (parsed.verifications && Array.isArray(parsed.verifications)) {
+                        console.log('[pdfService] Extracted JSON from prose response');
+                        return parsed;
+                    }
+                } catch {
+                    // Fall through to error
+                }
+            }
+            
             console.error('Failed to parse verification response:', jsonText.substring(0, 200));
             return { verifications: [] };
         }

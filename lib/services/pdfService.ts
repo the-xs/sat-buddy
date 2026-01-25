@@ -287,6 +287,16 @@ Extract EVERY question for this specific module, grouped into QUESTION SETS.
 - Extract the time in MINUTES as an integer
 - If no time limit is specified, return null
 
+**EXTRACTING CORRECT ANSWERS - CRITICAL:**
+When extracting the correctAnswer field, if the PDF has an answer key, use it. If solving yourself:
+- **Radicals/Exponents**: ⁿ√(aⁿ) = a, ⁿ√(xᵐ) = x^(m/n), xᵃ · xᵇ = x^(a+b)
+- **Systems**: Solve for BOTH variables, answer is ordered pair (x, y)
+- **Rationals**: Check domain restrictions, reject extraneous solutions (denominator ≠ 0)
+- **Circles**: Standard form (x-h)² + (y-k)² = r², watch signs carefully
+- **Exponentials**: Remember a^0 = 1, solve for the variable the question asks for (not another constant)
+- **Parabolas**: Use vertex form, check which variable is requested (a vs b vs c)
+- **Statistics**: Mean = sum/count, Median = middle (sort first!), for even count average two middle values
+
 **OUTPUT FORMAT - Return valid JSON:**
 {
   "testName": "The name of the test if found",

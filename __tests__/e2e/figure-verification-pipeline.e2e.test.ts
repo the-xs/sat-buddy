@@ -32,6 +32,18 @@ const Q26_OPTIONS = {
   D: `single-handedly however`
 };
 
+// Q27 data (logical transition)
+const Q27_PASSAGE = `During a 2021 launch, Rocket Labs' Electron rocket experienced an unexpected failure: its second-stage booster shut down suddenly after ignition. _______ instead of downplaying the incident, Rocket Labs' CEO publicly acknowledged what happened and apologized for the loss of the rocket's payload, which had consisted of two satellites.`;
+
+const Q27_QUESTION = `Which choice completes the text with the most logical transition?`;
+
+const Q27_OPTIONS = {
+  A: `Afterward,`,
+  B: `Additionally,`,
+  C: `Indeed,`,
+  D: `Similarly,`
+};
+
 // Hoisted mock for Prisma only
 const mockPrismaQuestionUpdate = vi.hoisted(() => vi.fn().mockResolvedValue({ id: 13 }));
 const mockPrismaVerificationLogCreate = vi.hoisted(() => vi.fn().mockResolvedValue({ id: 1 }));
@@ -160,6 +172,57 @@ describe.skipIf(SKIP_E2E)('E2E: verifyBatch Pipeline with Real Gemini', () => {
        })
      });
 
-     console.log('✅ verifyBatch correctly identified C was wrong and corrected to A');
-   }, 120000);  // 2 minute timeout for API call
+      console.log('✅ verifyBatch correctly identified C was wrong and corrected to A');
+    }, 120000);  // 2 minute timeout for API call
+
+    it('should correct Q27 from C to A (logical transition regression)', async () => {
+      console.log('Calling verifyBatch with Q27 (wrong answer C)...');
+
+      await pdfService.verifyBatch(
+        'e2e-test-file-id',
+        3,  // testId
+        'E2E Test Q27',
+        'ReadingWriting',
+        1,  // moduleNumber
+        [{
+          questionId: 27,
+          setIndex: 0,
+          qIndex: 0,
+          questionNumber: 27,
+          questionText: Q27_QUESTION,
+          questionType: 'MultipleChoice',
+          optionA: Q27_OPTIONS.A,
+          optionB: Q27_OPTIONS.B,
+          optionC: Q27_OPTIONS.C,
+          optionD: Q27_OPTIONS.D,
+          correctAnswer: 'C',  // WRONG - Gemini should correct to A
+          passage: Q27_PASSAGE,
+          hasFigure: false,
+          figureCaption: null,
+          figureData: undefined  // Text-only question
+        }]
+      );
+
+      // Verify correction to A
+      expect(mockPrismaQuestionUpdate).toHaveBeenCalledTimes(1);
+      expect(mockPrismaQuestionUpdate).toHaveBeenCalledWith({
+        where: { id: 27 },
+        data: expect.objectContaining({
+          correctAnswer: 'A'
+        })
+      });
+
+      // Verify logging
+      expect(mockPrismaVerificationLogCreate).toHaveBeenCalledTimes(1);
+      expect(mockPrismaVerificationLogCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          questionNumber: 27,
+          originalAnswer: 'C',
+          verifiedAnswer: 'A',
+          wasCorrect: false
+        })
+      });
+
+      console.log('✅ verifyBatch correctly identified C was wrong and corrected to A');
+    }, 120000);  // 2 minute timeout for API call
 });

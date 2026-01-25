@@ -883,7 +883,22 @@ For each question:
 1. Read the question, passage (if any), and ALL options extremely carefully
 2. Think hard about the problem - work through it step by step, showing your reasoning
 3. For math: verify calculations twice. For reading: re-read relevant passages
-4. For Standard English/grammar questions:
+4. For Math questions with radicals/exponents (CRITICAL):
+   - **RADICAL SIMPLIFICATION**: When simplifying nth roots:
+     * ⁿ√(aⁿ) = a (the root and power cancel)
+     * ⁿ√(xᵐ) = x^(m/n) (convert to fractional exponent)
+     * Example: ⁵√(3⁵x⁴⁵) = 3 · x^(45/5) = 3x⁹
+   - **EXPONENT RULES**: When multiplying powers:
+     * xᵃ · xᵇ = x^(a+b) (add exponents with same base)
+     * Example: x⁹ · x^(1/8) = x^(9 + 1/8) = x^(73/8)
+   - **COEFFICIENT MULTIPLICATION**: Multiply coefficients separately:
+     * (6 · 3) · x⁹ · (2 · x^(1/8)) = 36 · x^(73/8)
+   - **COMMON MISTAKES TO AVOID**:
+     * Don't forget to simplify radicals completely (⁵√(3⁵) = 3, not left as ⁵√(3⁵))
+     * Don't confuse root index with exponent (⁵√(x⁴⁵) = x⁹, not x⁵)
+     * When adding fractional exponents, find common denominator: 9 + 1/8 = 72/8 + 1/8 = 73/8
+     * For "a + b" questions, calculate BOTH values separately then add
+5. For Standard English/grammar questions:
    - Mentally insert EACH option into the blank and read the FULL sentence
    - **VERB FORMS**: Identify what grammatical role the blank plays:
      * Is it a MAIN VERB continuing a series? (needs same tense as other verbs)

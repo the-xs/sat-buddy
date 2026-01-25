@@ -921,7 +921,25 @@ For each question:
      * Remember: in vertex form y = a(x - h)² + k, the signs are OPPOSITE (vertex at x = h, not x = -h)
      * When parabola intersects x-axis twice, check vertex position to determine if a > 0 or a < 0
      * Always verify your answer by checking if the parabola properties match the problem
-6. For Standard English/grammar questions:
+6. For Math questions with exponential functions (CRITICAL):
+   - **EXPONENTIAL FUNCTION FORM**: f(x) = a^x or f(x) = -a^x + b or f(x) = c·a^x + d
+     * At x = 0: f(0) = a^0 = 1 (any nonzero base to power 0 equals 1)
+     * Example: If f(x) = -a^x + b, then f(0) = -a^0 + b = -1 + b
+   - **Y-INTERCEPT METHOD**: To find constants from y-intercept
+     * If graph of y = f(x) + k has y-intercept at (0, c), then f(0) + k = c
+     * Solve for f(0), then use f(0) = -1 + b to find b
+     * Example: If y = f(x) - 15 has y-intercept (0, -99/7), then f(0) - 15 = -99/7
+   - **SOLVING FOR CONSTANTS**: When given multiple conditions
+     * Step 1: Use intercept/point to find one constant
+     * Step 2: Use product/sum/other condition to find remaining constant
+     * Step 3: ALWAYS verify which variable the question asks for (a vs b vs c)
+   - **COMMON MISTAKES TO AVOID**:
+     * Don't forget a^0 = 1 for any nonzero base a
+     * Don't confuse the constants - if you find b first, use it to solve for a (don't return b as the answer for a!)
+     * Read carefully: "What is the value of a?" means find a, not b or ab
+     * When given ab = k and you found b, solve a = k/b
+     * Always substitute back to verify your answer matches all given conditions
+7. For Standard English/grammar questions:
    - Mentally insert EACH option into the blank and read the FULL sentence
    - **VERB FORMS**: Identify what grammatical role the blank plays:
      * Is it a MAIN VERB continuing a series? (needs same tense as other verbs)
@@ -940,9 +958,9 @@ For each question:
       * The result ("a tool") is what they INTENDED to create
     - **PARALLEL STRUCTURE**: Verbs connected by "and" should match in form, BUT check if the blank is actually part of the parallel series or serves a different function (like expressing purpose)
    - Check punctuation and sentence boundaries
-7. Determine the correct answer with high confidence
-8. Compare with the proposed answer
-9. If different, explain why the proposed answer is wrong and yours is correct
+8. Determine the correct answer with high confidence
+9. Compare with the proposed answer
+10. If different, explain why the proposed answer is wrong and yours is correct
 
 **FOR QUESTIONS WITH FIGURES (imageIndex > 0):**
 - Questions with imageIndex > 0 have an associated image provided above.

@@ -44,6 +44,18 @@ const Q27_OPTIONS = {
   D: `Similarly,`
 };
 
+// Q21 data (punctuation - sentence boundary)
+const Q21_PASSAGE = `After a spate of illnesses as a child, Wilma Rudolph was told she might never walk again. Defying all odds, Rudolph didn't just walk, she _______ the 1960 Summer Olympics in Rome, she won both the 100- and 200-meter dashes and clinched first place for her team in the 4×100-meter relay, becoming the first US woman to win three gold medals in a single Olympics.`;
+
+const Q21_QUESTION = `Which choice completes the text so that it conforms to the conventions of Standard English?`;
+
+const Q21_OPTIONS = {
+  A: `ran—fast—during`,
+  B: `ran—fast during`,
+  C: `ran—fast, during`,
+  D: `ran—fast. During`
+};
+
 // Hoisted mock for Prisma only
 const mockPrismaQuestionUpdate = vi.hoisted(() => vi.fn().mockResolvedValue({ id: 13 }));
 const mockPrismaVerificationLogCreate = vi.hoisted(() => vi.fn().mockResolvedValue({ id: 1 }));
@@ -223,6 +235,57 @@ describe.skipIf(SKIP_E2E)('E2E: verifyBatch Pipeline with Real Gemini', () => {
         })
       });
 
-      console.log('✅ verifyBatch correctly identified C was wrong and corrected to A');
-    }, 120000);  // 2 minute timeout for API call
+       console.log('✅ verifyBatch correctly identified C was wrong and corrected to A');
+     }, 120000);  // 2 minute timeout for API call
+
+     it('should correct Q21 from B to D (punctuation regression)', async () => {
+       console.log('Calling verifyBatch with Q21 (wrong answer B)...');
+
+       await pdfService.verifyBatch(
+         'e2e-test-file-id',
+         4,  // testId
+         'E2E Test Q21',
+         'ReadingWriting',
+         1,  // moduleNumber
+         [{
+           questionId: 21,
+           setIndex: 0,
+           qIndex: 0,
+           questionNumber: 21,
+           questionText: Q21_QUESTION,
+           questionType: 'MultipleChoice',
+           optionA: Q21_OPTIONS.A,
+           optionB: Q21_OPTIONS.B,
+           optionC: Q21_OPTIONS.C,
+           optionD: Q21_OPTIONS.D,
+           correctAnswer: 'B',  // WRONG - Gemini should correct to D
+           passage: Q21_PASSAGE,
+           hasFigure: false,
+           figureCaption: null,
+           figureData: undefined  // Text-only question
+         }]
+       );
+
+       // Verify correction to D
+       expect(mockPrismaQuestionUpdate).toHaveBeenCalledTimes(1);
+       expect(mockPrismaQuestionUpdate).toHaveBeenCalledWith({
+         where: { id: 21 },
+         data: expect.objectContaining({
+           correctAnswer: 'D'
+         })
+       });
+
+       // Verify logging
+       expect(mockPrismaVerificationLogCreate).toHaveBeenCalledTimes(1);
+       expect(mockPrismaVerificationLogCreate).toHaveBeenCalledWith({
+         data: expect.objectContaining({
+           questionNumber: 21,
+           originalAnswer: 'B',
+           verifiedAnswer: 'D',
+           wasCorrect: false
+         })
+       });
+
+       console.log('✅ verifyBatch correctly identified B was wrong and corrected to D');
+     }, 120000);  // 2 minute timeout for API call
 });

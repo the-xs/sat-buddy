@@ -889,8 +889,14 @@ For each question:
      * When a blank follows a completed action and introduces an outcome, and BOTH infinitive ("to + verb") AND participle ("-ing") seem possible:
      * CHOOSE INFINITIVE if the outcome represents the PURPOSE or GOAL of the action
      * The SAT tests this pattern frequently: "Subject did X _____ Y" where Y is the intended result
-     * Example: "Scientists modified the gene to create a cure" (NOT "creating") - the cure was the PURPOSE
-   - **PARALLEL STRUCTURE**: Verbs connected by "and" should match in form, BUT check if the blank is actually part of the parallel series or serves a different function (like expressing purpose)
+      * Example: "Scientists modified the gene to create a cure" (NOT "creating") - the cure was the PURPOSE
+    - **KEY PATTERN - "verb + object + BLANK + result"**:
+      * When the structure is: "Subject verbed [object] _____ [result/outcome]"
+      * The blank expresses PURPOSE → Use INFINITIVE ("to + verb")
+      * This is NOT parallel structure even if earlier verbs are parallel
+      * Example: "Scientists reprogrammed the bacteria to forge a tool" (NOT "forging")
+      * The result ("a tool") is what they INTENDED to create
+    - **PARALLEL STRUCTURE**: Verbs connected by "and" should match in form, BUT check if the blank is actually part of the parallel series or serves a different function (like expressing purpose)
    - Check punctuation and sentence boundaries
 5. Determine the correct answer with high confidence
 6. Compare with the proposed answer

@@ -56,6 +56,18 @@ const Q21_OPTIONS = {
   D: `ran—fast. During`
 };
 
+// M2-Q24 data (verb form - infinitive vs participle)
+const M2_Q24_PASSAGE = `Working from an earlier discovery of Charpentier's, chemists Emmanuelle Charpentier and Jennifer Doudna—winners of the 2020 Nobel Prize in Chemistry—re-created and then reprogrammed the so-called "genetic scissors" of a species of DNA-cleaving bacteria _______ a tool that is revolutionizing the field of gene technology.`;
+
+const M2_Q24_QUESTION = `Which choice completes the text so that it conforms to the conventions of Standard English?`;
+
+const M2_Q24_OPTIONS = {
+  A: `to forge`,
+  B: `forging`,
+  C: `forged`,
+  D: `and forging`
+};
+
 // Hoisted mock for Prisma only
 const mockPrismaQuestionUpdate = vi.hoisted(() => vi.fn().mockResolvedValue({ id: 13 }));
 const mockPrismaVerificationLogCreate = vi.hoisted(() => vi.fn().mockResolvedValue({ id: 1 }));
@@ -286,6 +298,57 @@ describe.skipIf(SKIP_E2E)('E2E: verifyBatch Pipeline with Real Gemini', () => {
          })
        });
 
-       console.log('✅ verifyBatch correctly identified B was wrong and corrected to D');
-     }, 120000);  // 2 minute timeout for API call
+        console.log('✅ verifyBatch correctly identified B was wrong and corrected to D');
+      }, 120000);  // 2 minute timeout for API call
+
+      it('should correct M2-Q24 from B to A (verb form regression)', async () => {
+        console.log('Calling verifyBatch with M2-Q24 (wrong answer B)...');
+
+        await pdfService.verifyBatch(
+          'e2e-test-file-id',
+          5,  // testId
+          'E2E Test M2-Q24',
+          'ReadingWriting',
+          2,  // moduleNumber (Module 2)
+          [{
+            questionId: 24,
+            setIndex: 0,
+            qIndex: 0,
+            questionNumber: 24,
+            questionText: M2_Q24_QUESTION,
+            questionType: 'MultipleChoice',
+            optionA: M2_Q24_OPTIONS.A,
+            optionB: M2_Q24_OPTIONS.B,
+            optionC: M2_Q24_OPTIONS.C,
+            optionD: M2_Q24_OPTIONS.D,
+            correctAnswer: 'B',  // WRONG - Gemini should correct to A
+            passage: M2_Q24_PASSAGE,
+            hasFigure: false,
+            figureCaption: null,
+            figureData: undefined  // Text-only question
+          }]
+        );
+
+        // Verify correction to A
+        expect(mockPrismaQuestionUpdate).toHaveBeenCalledTimes(1);
+        expect(mockPrismaQuestionUpdate).toHaveBeenCalledWith({
+          where: { id: 24 },
+          data: expect.objectContaining({
+            correctAnswer: 'A'
+          })
+        });
+
+        // Verify logging
+        expect(mockPrismaVerificationLogCreate).toHaveBeenCalledTimes(1);
+        expect(mockPrismaVerificationLogCreate).toHaveBeenCalledWith({
+          data: expect.objectContaining({
+            questionNumber: 24,
+            originalAnswer: 'B',
+            verifiedAnswer: 'A',
+            wasCorrect: false
+          })
+        });
+
+        console.log('✅ verifyBatch correctly identified B was wrong and corrected to A');
+      }, 120000);  // 2 minute timeout for API call
 });

@@ -254,6 +254,14 @@ Extract EVERY question for this specific module, grouped into QUESTION SETS.
   - Inequalities: $\\leq$, $\\geq$, $\\neq$
   - Multiplication: $\\times$ or $\\cdot$
   - Keep simple variables like x, y, n without $ delimiters unless in a formula
+  - **CRITICAL - OCR ERROR CORRECTION**: Fix common PDF extraction errors:
+    * EXPONENTIAL vs POLYNOMIAL: $a^x$ (exponential) NOT $ax^8$ (polynomial with coefficient)
+      - If you see $f(x) = -ax^8 + b$, check if it should be $f(x) = -a^x + b$ (exponential function)
+      - Context clue: "exponential function" or "growth/decay" → use $a^x$
+    * ROOT INDEX: $\\sqrt[8]{...}$ (8th root) NOT $\\sqrt[4]{...}$ if 8 appears in the PDF
+      - Common error: 8th root misread as 4th root
+      - Double-check root indices against the PDF image
+    * SUBSCRIPT vs SUPERSCRIPT: Verify base vs exponent positioning
   - **CRITICAL - NESTED EXPRESSIONS**: Preserve the EXACT nesting structure:
     - Square root of a sum: $\\sqrt{w + 19}$ (NOT $\\sqrt{w} + 19$ - the +19 must be INSIDE the sqrt braces)
     - Squared fraction: $\\left(\\frac{x}{y}\\right)^2$ (use \\left and \\right for proper sizing)
@@ -894,6 +902,10 @@ For each question:
 2. Think hard about the problem - work through it step by step, showing your reasoning
 3. For math: verify calculations twice. For reading: re-read relevant passages
 4. For Math questions with radicals/exponents (CRITICAL):
+   - **VERIFY ROOT INDEX**: Check if the root index makes sense
+     * If you see ⁴√(2⁸x) but the calculation seems off, it might be ⁸√(2⁸x) instead
+     * Context: Look at other parts of the expression for consistency
+     * 8th root is common in SAT, 4th root less so - double-check if you see ⁴√
    - **RADICAL SIMPLIFICATION**: When simplifying nth roots:
      * ⁿ√(aⁿ) = a (the root and power cancel)
      * ⁿ√(xᵐ) = x^(m/n) (convert to fractional exponent)
@@ -932,6 +944,10 @@ For each question:
      * When parabola intersects x-axis twice, check vertex position to determine if a > 0 or a < 0
      * Always verify your answer by checking if the parabola properties match the problem
 6. For Math questions with exponential functions (CRITICAL):
+   - **VERIFY FUNCTION TYPE FIRST**: Is this truly exponential or was it misparsed?
+     * Exponential: f(x) = a^x means "a to the power of x" → grows/decays exponentially
+     * Polynomial: f(x) = ax^8 means "a times x to the 8th power" → different problem entirely!
+     * If question says "exponential function" or mentions growth/decay, it MUST be a^x not ax^n
    - **EXPONENTIAL FUNCTION FORM**: f(x) = a^x or f(x) = -a^x + b or f(x) = c·a^x + d
      * At x = 0: f(0) = a^0 = 1 (any nonzero base to power 0 equals 1)
      * Example: If f(x) = -a^x + b, then f(0) = -a^0 + b = -1 + b

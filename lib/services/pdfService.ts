@@ -747,10 +747,53 @@ Return ONLY valid JSON. No conversational text.`;
             const { text, modelUsed, tierUsed } = await generateWithFallback(
                 'answerVerification',
                 contents,
-                { startTier: 'premium' }
+                { 
+                    startTier: 'premium',
+                    responseMimeType: 'application/json'
+                }
             );
 
-            const response = this.parseVerificationResponse(text);
+            let response = this.parseVerificationResponse(text);
+
+            // Retry with stricter prompt if parsing returned empty
+            if (response.verifications.length === 0 && batch.length > 0) {
+                console.log('[pdfService] Empty verification response, retrying with stricter prompt...');
+                
+                const strictPrompt = `You MUST respond with ONLY valid JSON. No explanations, no markdown, no prose.
+
+${prompt}
+
+CRITICAL: Your entire response must be parseable JSON. Start with { and end with }. Nothing else.`;
+
+                // Rebuild contents with strict prompt
+                let strictContents: ContentListUnion;
+                if (sortedFigures.length > 0) {
+                    const parts: Array<{text: string} | {inlineData: {mimeType: string, data: string}}> = [];
+                    for (const [, figData] of sortedFigures) {
+                        parts.push({ inlineData: { mimeType: 'image/png', data: figData.figureData } });
+                    }
+                    parts.push({ text: strictPrompt });
+                    strictContents = createUserContent(parts);
+                } else {
+                    strictContents = strictPrompt;
+                }
+
+                const retryResult = await generateWithFallback(
+                    'answerVerification',
+                    strictContents,
+                    { 
+                        startTier: 'premium',
+                        responseMimeType: 'application/json'
+                    }
+                );
+                
+                response = this.parseVerificationResponse(retryResult.text);
+                
+                if (response.verifications.length > 0) {
+                    console.log('[pdfService] Retry successful, got valid verifications');
+                }
+            }
+
             const processingTimeMs = Date.now() - startTime;
 
             for (const result of response.verifications) {

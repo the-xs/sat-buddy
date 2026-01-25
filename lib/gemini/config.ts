@@ -4,6 +4,7 @@
  */
 
 import { ModelTier, UseCase, ModelPreset } from './types';
+import { ThinkingLevel } from '@google/genai';
 
 /**
  * Model presets for each use case and tier
@@ -15,28 +16,28 @@ import { ModelTier, UseCase, ModelPreset } from './types';
 export const MODEL_PRESETS: Record<UseCase, Record<ModelTier, ModelPreset>> = {
   // PDF Parsing - needs deep reasoning for extracting questions correctly
   pdfParsing: {
-    premium: { model: 'gemini-3-pro-preview', thinking: { thinkingLevel: 'high' } },
+    premium: { model: 'gemini-3-pro-preview', thinking: { thinkingLevel: ThinkingLevel.HIGH } },
     standard: { model: 'gemini-2.5-pro', thinking: { thinkingBudget: 8192 } },
     budget: { model: 'gemini-2.5-flash', thinking: { thinkingBudget: 4096 } },
   },
 
   // Answer Verification - critical for correct solutions
   answerVerification: {
-    premium: { model: 'gemini-3-pro-preview', thinking: { thinkingLevel: 'high' } },
+    premium: { model: 'gemini-3-pro-preview', thinking: { thinkingLevel: ThinkingLevel.HIGH } },
     standard: { model: 'gemini-2.5-pro', thinking: { thinkingBudget: 8192 } },
     budget: { model: 'gemini-2.5-flash', thinking: { thinkingBudget: 4096 } },
   },
 
   // Practice Question Generation
   practiceGeneration: {
-    premium: { model: 'gemini-3-pro-preview', thinking: { thinkingLevel: 'high' } },
+    premium: { model: 'gemini-3-pro-preview', thinking: { thinkingLevel: ThinkingLevel.HIGH } },
     standard: { model: 'gemini-2.5-flash', thinking: { thinkingBudget: 4096 } },
     budget: { model: 'gemini-2.5-flash', thinking: { thinkingBudget: 2048 } },
   },
 
   // Explanations - good reasoning for teaching
   explanations: {
-    premium: { model: 'gemini-3-pro-preview', thinking: { thinkingLevel: 'high' } },
+    premium: { model: 'gemini-3-pro-preview', thinking: { thinkingLevel: ThinkingLevel.HIGH } },
     standard: { model: 'gemini-2.5-flash', thinking: { thinkingBudget: 4096 } },
     budget: { model: 'gemini-2.5-flash', thinking: { thinkingBudget: 2048 } },
   },

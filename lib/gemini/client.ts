@@ -4,7 +4,7 @@
  */
 
 import { GoogleGenAI, createPartFromUri, createUserContent } from '@google/genai';
-import { ModelPreset, ModelTier, UseCase, GenerationResult, ThinkingConfig, FileUploadResult } from './types';
+import { ModelPreset, ModelTier, UseCase, GenerationResult, LocalThinkingConfig, FileUploadResult } from './types';
 import { getPreset, getNextFallbackTier, getModelTier, FALLBACK_CHAIN } from './config';
 
 export { createPartFromUri, createUserContent };
@@ -35,12 +35,18 @@ export function resetGeminiClient(): void {
 /**
  * Build the generation config object for the API call
  */
-export function buildGenerationConfig(preset: ModelPreset): object | undefined {
-  if (!preset.thinking) return undefined;
-
-  return {
-    thinkingConfig: preset.thinking,
-  };
+export function buildGenerationConfig(preset: ModelPreset, responseMimeType?: string): object | undefined {
+  const config: Record<string, unknown> = {};
+  
+  if (preset.thinking) {
+    config.thinkingConfig = preset.thinking;
+  }
+  
+  if (responseMimeType) {
+    config.responseMimeType = responseMimeType;
+  }
+  
+  return Object.keys(config).length > 0 ? config : undefined;
 }
 
 /**
@@ -72,6 +78,7 @@ interface GenerateOptions {
   startTier?: ModelTier;
   maxRetries?: number;
   retryDelayMs?: number;
+  responseMimeType?: string;
 }
 
 /**
@@ -80,7 +87,7 @@ interface GenerateOptions {
  */
 export async function generateWithFallback(
   useCase: UseCase,
-  contents: string | unknown[],
+  contents: string | unknown[] | any,
   options?: GenerateOptions
 ): Promise<GenerationResult> {
   const ai = getGeminiClient();
@@ -101,11 +108,11 @@ export async function generateWithFallback(
           `[Gemini] Calling ${preset.model} (tier: ${tier}, attempt: ${attempt + 1}/${maxRetries + 1})`
         );
 
-        const response = await ai.models.generateContent({
-          model: preset.model,
-          contents: contents,
-          config: buildGenerationConfig(preset),
-        });
+         const response = await ai.models.generateContent({
+           model: preset.model,
+           contents: contents,
+           config: buildGenerationConfig(preset, options?.responseMimeType),
+         });
 
         const text = response.text ?? '';
         
@@ -155,8 +162,8 @@ export async function generateWithFallback(
 
 export async function generateSimple(
   model: string,
-  contents: string | unknown[],
-  thinkingConfig?: ThinkingConfig
+  contents: string | unknown[] | any,
+  thinkingConfig?: LocalThinkingConfig
 ): Promise<string> {
   const ai = getGeminiClient();
   
@@ -164,7 +171,7 @@ export async function generateSimple(
   
   const response = await ai.models.generateContent({
     model,
-    contents,
+    contents: contents as any,
     config,
   });
 
